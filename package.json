@@ -5,8 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build-win": "electron-builder --win",
-    "build-mac": "electron-builder --mac"
+    "build-win": "electron-builder --win --x64"
   },
   "dependencies": {
     "twitter-api-v2": "^1.17.0",
@@ -22,18 +21,20 @@
   "build": {
     "appId": "com.tweetpilot.app",
     "productName": "Tweet Pilot",
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+    "directories": {
+      "output": "dist"
     },
-    "mac": {
-      "target": "dmg",
-      "icon": "assets/icon.icns"
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**"
+    ],
+    "win": {
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "arabic": true
+      "allowToChangeInstallationDirectory": true
     }
   }
 }
