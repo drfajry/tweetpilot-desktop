@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
 const { TwitterApi } = require('twitter-api-v2');
 const Database = require('better-sqlite3');
@@ -205,6 +205,16 @@ ipcMain.handle('fetch-bestsellers', (_, source) => {
 
 // ── App Events ────────────────────────────────────
 app.whenReady().then(() => {
+  // تعطيل CSP للسماح بتحميل الواجهة
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': ["default-src * 'unsafe-inline' 'unsafe-eval' data: blob:"]
+      }
+    });
+  });
+
   initDB();
   createMainWindow();
 
