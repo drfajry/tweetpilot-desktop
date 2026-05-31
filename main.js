@@ -68,7 +68,7 @@ function createMainWindow() {
       nodeIntegration: false,
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    title: 'Tweet Pilot',
+    title: 'ناشر',
     backgroundColor: '#070b14',
   });
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' https: data:; script-src 'self' 'unsafe-inline';">
-<title>Tweet Pilot</title>
+<title>ناشر</title>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -170,10 +170,10 @@ input:focus,textarea:focus{border-color:var(--blue)}
 <!-- ══ HEADER ══ -->
 <div class="header">
   <div class="logo">
-    <div class="logo-icon">𝕏</div>
+    <div class="logo-icon">✈️</div>
     <div>
-      <div class="logo-text">Tweet Pilot</div>
-      <div class="logo-sub">أداة التغريد الذكي بالأفلييت</div>
+      <div class="logo-text">ناشر</div>
+      <div class="logo-sub">النشر الذكي على منصات التواصل</div>
     </div>
   </div>
   <div class="steps" id="steps"></div>
@@ -267,7 +267,7 @@ function renderHeader() {
 function renderConnect() {
   return `<div class="connect-screen">
     <div class="connect-icon">𝕏</div>
-    <div class="connect-title">مرحباً بك في Tweet Pilot</div>
+    <div class="connect-title">مرحباً بك في ناشر</div>
     <div class="connect-sub">اربط حسابك على X بنقرة واحدة وابدأ التغريد الذكي فوراً</div>
     <button class="btn-connect-big" id="btnConnect">
       ${S.connecting ? '<span class="spinner"></span> جاري الربط...' : '🔗 ربط حساب X'}

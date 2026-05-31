@@ -1,11 +1,12 @@
 {
-  "name": "tweet-pilot",
+  "name": "nashir",
   "version": "1.0.0",
-  "description": "Tweet Pilot - أداة التغريد الذكي بالأفلييت",
+  "description": "ناشر - النشر الذكي على منصات التواصل",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build-win": "electron-builder --win --x64"
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac"
   },
   "dependencies": {
     "twitter-api-v2": "^1.17.0",
@@ -19,22 +20,20 @@
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.tweetpilot.app",
-    "productName": "Tweet Pilot",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "renderer/**"
-    ],
+    "appId": "com.nashir.app",
+    "productName": "ناشر",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "renderer/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "arabic": true
     }
   }
 }
