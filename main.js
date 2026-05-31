@@ -5,8 +5,8 @@ const Database = require('better-sqlite3');
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY    = 'YmtJWUhrNjF6VDJ1UDBla3JWWnI6MTpjaQ';
-const API_SECRET = 'Xx-99PBIoht5pl4auTBBX1Zor6VsIQ-EZ8OwCDehJrjACE6xck';
+const API_KEY    = '8XOY7T0RbR3qdqx4QNs28R049'; // ← ضع Consumer Key هنا
+const API_SECRET = 'OPLeurfpTKPlqezTW4zLrae2nQD2TlVsQ1l17XiWcHPK1'; // ← ضع Consumer Secret هنا
 
 // ── قاعدة البيانات ────────────────────────────────
 const DB_PATH = path.join(app.getPath('userData'), 'nashir.db');
