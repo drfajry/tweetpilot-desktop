@@ -1,0 +1,39 @@
+{
+  "name": "tweet-pilot",
+  "version": "1.0.0",
+  "description": "Tweet Pilot - أداة التغريد الذكي بالأفلييت",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac"
+  },
+  "dependencies": {
+    "twitter-api-v2": "^1.17.0",
+    "better-sqlite3": "^9.4.3",
+    "node-cron": "^3.0.3",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.tweetpilot.app",
+    "productName": "Tweet Pilot",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "arabic": true
+    }
+  }
+}
