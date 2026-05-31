@@ -122,9 +122,16 @@ async function startOAuth() {
     <script>
       function submit() {
         const url = document.getElementById('url').value.trim();
-        if (!url) return alert('الصق الرابط أولاً');
-        window.location.href = 'about:blank';
-        fetch('http://localhost:42070/auth?url=' + encodeURIComponent(url));
+        if (!url) { alert('الصق الرابط أولاً'); return; }
+        const btn = document.querySelector('button');
+        btn.textContent = '⏳ جاري الربط...';
+        btn.disabled = true;
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:42070/auth?url=' + encodeURIComponent(url), true);
+        xhr.timeout = 15000;
+        xhr.onload = function() { btn.textContent = '✅ تم!'; };
+        xhr.onerror = function() { btn.textContent = 'خطأ - حاول مجدداً'; btn.disabled = false; };
+        xhr.send();
       }
     </script>
     </body></html>
