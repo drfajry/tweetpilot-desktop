@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, session, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
 const { TwitterApi } = require('twitter-api-v2');
 const Database = require('better-sqlite3');
@@ -12,7 +12,7 @@ const CLIENT_SECRET= 'lqmot8CEQTiHH6bS-aJ3_aMO1EFCTu4zNZkejTQtwAwFGXu_pT'; // �
 const CALLBACK_URL = 'nashir://auth/callback';
 const SCOPES       = ['tweet.read','tweet.write','users.read','offline.access'];
 
-// ── قاعدة البيانات ────────────────────────────────
+// ── قاعدة البيانات ───────────────────────────────
 const DB_PATH = path.join(app.getPath('userData'), 'nashir.db');
 let db;
 
@@ -46,26 +46,28 @@ function initDB() {
   `);
 }
 
-// ── النوافذ ───────────────────────────────────────
+// ── النافذة الرئيسية ─────────────────────────────
 let mainWindow;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1100, height: 780, minWidth: 900, minHeight: 650,
+    width: 1100,
+    height: 780,
+    minWidth: 900,
+    minHeight: 650,
+    title: 'ناشر',
+    backgroundColor: '#070b14',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
-    title: 'ناشر',
-    backgroundColor: '#070b14',
-    icon: path.join(__dirname, 'renderer', 'icon.ico'),
   });
-  mainWindow.loadFile('renderer/index.html');
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   mainWindow.setMenuBarVisibility(false);
 }
 
-// ── OAuth 2.0 PKCE ────────────────────────────────
+// ── OAuth 2.0 PKCE ───────────────────────────────
 let oauthCodeVerifier = null;
 let oauthState = null;
 
@@ -86,34 +88,33 @@ async function handleCallback(callbackUrl) {
     if (!code || state !== oauthState) throw new Error('رابط غير صحيح');
 
     const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-    const { client: loggedClient, accessToken, refreshToken, expiresIn } =
+    const { client: loggedClient, accessToken, refreshToken } =
       await client.loginWithOAuth2({ code, codeVerifier: oauthCodeVerifier, redirectUri: CALLBACK_URL });
 
-    const me = await loggedClient.v2.me({ 'user.fields': ['profile_image_url','name'] });
+    const me = await loggedClient.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
 
     db.prepare(`INSERT OR REPLACE INTO auth (id, access_token, access_secret, username, name, profile_image)
       VALUES (1, ?, ?, ?, ?, ?)`).run(
-      accessToken, refreshToken||'',
+      accessToken, refreshToken || '',
       me.data.username, me.data.name,
-      me.data.profile_image_url||''
+      me.data.profile_image_url || ''
     );
 
     mainWindow?.webContents.send('auth-success', {
       username: me.data.username,
-      profile_image: me.data.profile_image_url||'',
+      profile_image: me.data.profile_image_url || '',
     });
   } catch(e) {
     mainWindow?.webContents.send('auth-error', e.message);
   }
 }
 
-// ── IPC Handlers ──────────────────────────────────
+// ── IPC Handlers ─────────────────────────────────
 ipcMain.handle('get-auth', () => {
   return db.prepare('SELECT * FROM auth WHERE id=1').get() || null;
 });
 
 ipcMain.handle('start-oauth', () => startOAuth());
-
 
 ipcMain.handle('logout', () => {
   db.prepare('DELETE FROM auth WHERE id=1').run();
@@ -132,7 +133,7 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }
       `💡 نصيحة لمن يريد {product}: هذا المنتج حصل على أعلى التقييمات\nجربه بنفسك 👇\n{url}\n{trends}`,
     ],
     funny: [
-      `😂 محفظتي تكرهني بعد ما شفت سعر {product}\nبس مش قادر أقاومه 🤷‍♂️\n{url}\n{trends}`,
+      `😂 محفظتي تكرهني بعد ما شفت سعر {product}\nبس مش قادر أقاومه 🤷\n{url}\n{trends}`,
       `🤣 أنا وعدت نفسي ما أشتري.. بس {product} بهالسعر؟!\nكذبت على نفسي 😅\n{url}\n{trends}`,
     ],
     urgency: [
@@ -206,41 +207,25 @@ ipcMain.handle('fetch-bestsellers', (_, source) => {
   return { success: true, products: mocks[source] || mocks.noon };
 });
 
-// ── App Events ────────────────────────────────────
-// تسجيل البروتوكول المخصص
-if (process.defaultApp) {
-  if (process.argv.length >= 2) app.setAsDefaultProtocolClient('nashir', process.execPath, [path.resolve(process.argv[1])]);
-} else {
-  app.setAsDefaultProtocolClient('nashir');
-}
+// ── تسجيل البروتوكول nashir:// ───────────────────
+app.setAsDefaultProtocolClient('nashir');
 
-// استقبال الـ callback على Windows
 app.on('second-instance', (event, commandLine) => {
   const url = commandLine.find(arg => arg.startsWith('nashir://'));
   if (url) handleCallback(url);
   if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
 });
 
-// استقبال الـ callback على Mac
 app.on('open-url', (event, url) => {
   event.preventDefault();
   handleCallback(url);
 });
 
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) { app.quit(); }
+if (!gotLock) app.quit();
 
+// ── تشغيل التطبيق ────────────────────────────────
 app.whenReady().then(() => {
-  // تعطيل CSP للسماح بتحميل الواجهة
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': ["default-src * 'unsafe-inline' 'unsafe-eval' data: blob:"]
-      }
-    });
-  });
-
   initDB();
   createMainWindow();
 
