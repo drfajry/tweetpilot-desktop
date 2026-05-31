@@ -10,7 +10,7 @@ const cron = require('node-cron');
 const CLIENT_ID     = 'YmtJWUhrNjF6VDJ1UDBla3JWWnI6MTpjaQ'; // ← يضعها المطور
 const CLIENT_SECRET = 'Xx-99PBIoht5pl4auTBBX1Zor6VsIQ-EZ8OwCDehJrjACE6xck'; // ← يضعها المطور
 const CALLBACK_PORT = 42069;
-const CALLBACK_URL  = `http://127.0.0.1:${CALLBACK_PORT}/callback`;
+const CALLBACK_URL  = 'https://example.com/callback';
 const SCOPES        = ['tweet.read', 'tweet.write', 'users.read', 'offline.access'];
 
 // ── قاعدة البيانات ────────────────────────────────
@@ -91,57 +91,44 @@ async function startOAuth() {
   oauthState = state;
   oauthCodeVerifier = codeVerifier;
 
-  // ── خادم محلي مؤقت لاستقبال callback ──
-  oauthServer = http.createServer(async (req, res) => {
-    const urlObj = new URL(req.url, `http://127.0.0.1:${CALLBACK_PORT}`);
-    const code  = urlObj.searchParams.get('code');
-    const state = urlObj.searchParams.get('state');
-
-    if (!code || state !== oauthState) {
-      res.writeHead(400);
-      res.end('<h2>خطأ في المصادقة</h2>');
-      return;
-    }
-
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8">
-      <style>body{font-family:sans-serif;background:#070b14;color:#1d9bf0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:22px}</style>
-      </head><body>✅ تم ربط الحساب بنجاح! يمكنك إغلاق هذه النافذة.</body></html>`);
-
-    oauthServer.close();
-
-    try {
-      const { client: loggedClient, accessToken, refreshToken, expiresIn } =
-        await client.loginWithOAuth2({ code, codeVerifier: oauthCodeVerifier, redirectUri: CALLBACK_URL });
-
-      const me = await loggedClient.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
-
-      db.prepare(`INSERT OR REPLACE INTO auth (id, access_token, refresh_token, username, name, profile_image, expires_at)
-        VALUES (1, ?, ?, ?, ?, ?, ?)`).run(
-        accessToken,
-        refreshToken || '',
-        me.data.username,
-        me.data.name,
-        me.data.profile_image_url || '',
-        Date.now() + (expiresIn * 1000)
-      );
-
-      mainWindow?.webContents.send('auth-success', {
-        username: me.data.username,
-        name: me.data.name,
-        profile_image: me.data.profile_image_url,
-      });
-
-      authWindow?.close();
-    } catch(e) {
-      mainWindow?.webContents.send('auth-error', e.message);
-    }
-  });
-
-  oauthServer.listen(CALLBACK_PORT, '127.0.0.1');
-
   // فتح المتصفح
   shell.openExternal(url);
+  
+  // نافذة للإدخال اليدوي للكود
+  authWindow = new BrowserWindow({
+    width: 500, height: 400,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+    title: 'ربط حساب X',
+    backgroundColor: '#070b14',
+    parent: mainWindow,
+    modal: true,
+  });
+
+  authWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
+    <!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8">
+    <style>
+      body{font-family:sans-serif;background:#070b14;color:#e8eaf0;padding:30px;direction:rtl}
+      h2{color:#1d9bf0;margin-bottom:16px;font-size:18px}
+      p{color:#888;font-size:13px;line-height:1.7;margin-bottom:20px}
+      input{width:100%;padding:12px;background:#111827;border:1px solid #1d9bf033;border-radius:8px;color:#fff;font-size:13px;margin-bottom:14px;box-sizing:border-box}
+      button{width:100%;padding:12px;background:linear-gradient(135deg,#1d9bf0,#0d6efd);border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+      .hint{font-size:11px;color:#555;margin-top:10px;text-align:center}
+    </style></head><body>
+    <h2>🔗 ربط حساب X</h2>
+    <p>بعد تسجيل الدخول في المتصفح، انسخ الرابط الكامل من شريط العنوان والصقه هنا:</p>
+    <input id="url" placeholder="https://example.com/callback?code=...&state=..." />
+    <button onclick="submit()">تأكيد الربط</button>
+    <div class="hint">مثال: https://example.com/callback?code=ABC123&state=XYZ</div>
+    <script>
+      function submit() {
+        const url = document.getElementById('url').value.trim();
+        if (!url) return alert('الصق الرابط أولاً');
+        window.location.href = 'about:blank';
+        fetch('http://localhost:42070/auth?url=' + encodeURIComponent(url));
+      }
+    </script>
+    </body></html>
+  `));
 }
 
 // ── IPC Handlers ──────────────────────────────────
@@ -269,6 +256,49 @@ ipcMain.handle('fetch-bestsellers', async (_, source) => {
 
   return { success: true, products: mocks[source] || mocks.noon };
 });
+
+// ── Auth Code Receiver ───────────────────────────
+const authReceiver = http.createServer(async (req, res) => {
+  const urlObj = new URL(req.url, 'http://localhost:42070');
+  const callbackUrl = urlObj.searchParams.get('url');
+  res.end('ok');
+  
+  if (!callbackUrl) return;
+  
+  try {
+    const parsed = new URL(callbackUrl);
+    const code  = parsed.searchParams.get('code');
+    const state = parsed.searchParams.get('state');
+    
+    if (!code || state !== oauthState) {
+      mainWindow?.webContents.send('auth-error', 'رابط غير صحيح');
+      return;
+    }
+
+    const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
+    const { client: loggedClient, accessToken, refreshToken, expiresIn } =
+      await client.loginWithOAuth2({ code, codeVerifier: oauthCodeVerifier, redirectUri: CALLBACK_URL });
+
+    const me = await loggedClient.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
+
+    db.prepare(`INSERT OR REPLACE INTO auth (id, access_token, refresh_token, username, name, profile_image, expires_at)
+      VALUES (1, ?, ?, ?, ?, ?, ?)`).run(
+      accessToken, refreshToken||'', me.data.username, me.data.name,
+      me.data.profile_image_url||'', Date.now()+((expiresIn||7200)*1000)
+    );
+
+    mainWindow?.webContents.send('auth-success', {
+      username: me.data.username,
+      name: me.data.name,
+      profile_image: me.data.profile_image_url,
+    });
+
+    authWindow?.close();
+  } catch(e) {
+    mainWindow?.webContents.send('auth-error', e.message);
+  }
+});
+authReceiver.listen(42070, '127.0.0.1');
 
 // ── App Events ────────────────────────────────────
 app.whenReady().then(() => {
