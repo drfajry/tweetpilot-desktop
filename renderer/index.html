@@ -2,9 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' https: data:; script-src 'self' 'unsafe-inline';">
 <title>Tweet Pilot</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -13,7 +13,7 @@
   --blue:#1d9bf0;--blue2:#0d6efd;--purple:#7c3aed;
   --green:#00c896;--red:#ff4444;--orange:#ff8800;
   --text:#e8eaf0;--muted:#6b7280;
-  --font:'IBM Plex Sans Arabic',sans-serif;
+  --font:'Segoe UI','Arial',sans-serif;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
