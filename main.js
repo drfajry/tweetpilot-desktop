@@ -272,28 +272,99 @@ ipcMain.handle('fetch-trends', async (_, { region }) => {
   return result;
 });
 
+// جلب المنتجات عبر DuckDuckGo HTML Search — بدون API key
+function searchDuckDuckGo(query) {
+  return new Promise((resolve) => {
+    const { net } = require('electron');
+    const encodedQuery = encodeURIComponent(query);
+    const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}&kl=ar-ar`;
+
+    const request = net.request({
+      url,
+      method: 'GET',
+      session: require('electron').session.defaultSession,
+    });
+
+    request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    request.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+    request.setHeader('Accept-Language', 'ar-SA,ar;q=0.9,en;q=0.8');
+
+    let data = '';
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      request.abort();
+      resolve({ success: false, error: 'انتهت مهلة الطلب', products: [] });
+    }, 12000);
+
+    request.on('response', (response) => {
+      response.on('data', chunk => { data += chunk.toString(); });
+      response.on('end', () => {
+        if (timedOut) return;
+        clearTimeout(timer);
+        try {
+          if (response.statusCode !== 200) {
+            resolve({ success: false, error: `HTTP ${response.statusCode}`, products: [] });
+            return;
+          }
+
+          // استخراج نتائج البحث من HTML
+          // كل نتيجة: <a class="result__a" href="...">العنوان</a>
+          const results = [];
+          const titleMatches = [...data.matchAll(/class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g)];
+          const snippetMatches = [...data.matchAll(/class="result__snippet"[^>]*>([^<]+)<\/a>/g)];
+
+          for (let i = 0; i < Math.min(titleMatches.length, 6); i++) {
+            const url = titleMatches[i][1];
+            const title = titleMatches[i][2].trim();
+            const snippet = snippetMatches[i] ? snippetMatches[i][1].trim() : '';
+
+            // استخراج السعر من الـ snippet إذا وجد
+            const priceMatch = snippet.match(/(?:SAR|ريال|SR|﷼|\$|USD)\s*[\d,\.]+|[\d,\.]+\s*(?:SAR|ريال|SR)/i);
+            const price = priceMatch ? priceMatch[0] : '';
+
+            if (title && url) {
+              results.push({
+                name: title.substring(0, 60),
+                brand: '',
+                price,
+                url,
+                snippet: snippet.substring(0, 100),
+              });
+            }
+          }
+
+          if (results.length === 0) {
+            resolve({ success: false, error: 'لم تُعثر على نتائج', products: [] });
+            return;
+          }
+
+          resolve({ success: true, products: results });
+        } catch(e) {
+          resolve({ success: false, error: e.message, products: [] });
+        }
+      });
+    });
+
+    request.on('error', (e) => {
+      if (!timedOut) { clearTimeout(timer); resolve({ success: false, error: e.message, products: [] }); }
+    });
+
+    request.end();
+  });
+}
+
 ipcMain.handle('fetch-bestsellers', async (_, source) => {
-  const mocks = {
-    amazon: [
-      { name:'سماعات AirPods Pro 2', brand:'Apple', price:'799 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
-      { name:'شاشة LG 27 بوصة 4K', brand:'LG', price:'1299 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
-      { name:'ماوس MX Master 3S', brand:'Logitech', price:'349 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
-      { name:'كيبورد Keychron K8', brand:'Keychron', price:'549 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
-    ],
-    noon: [
-      { name:'سماعات Galaxy Buds2 Pro', brand:'Samsung', price:'499 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
-      { name:'ساعة Mi Band 8 Pro', brand:'Xiaomi', price:'229 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
-      { name:'مكبر Charge 5', brand:'JBL', price:'699 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
-      { name:'شاحن 65W GaN', brand:'Anker', price:'149 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
-    ],
-    aliexpress: [
-      { name:'إضاءة RGB للغرفة', brand:'Govee', price:'$18.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
-      { name:'حامل هاتف مغناطيسي', brand:'', price:'$6.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
-      { name:'سماعات TWS ANC', brand:'QCY', price:'$22.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
-      { name:'بطارية محمولة 30000mAh', brand:'Baseus', price:'$24.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
-    ],
+  const QUERIES = {
+    amazon:      'site:amazon.sa أفضل مبيعاً الكترونيات',
+    noon:        'site:noon.com/saudi-ar أفضل مبيعاً الكترونيات',
+    aliexpress:  'site:aliexpress.com أفضل مبيعاً عروض',
   };
-  return { success: true, products: mocks[source] || mocks.noon };
+
+  const query = QUERIES[source] || QUERIES.noon;
+  const result = await searchDuckDuckGo(query);
+  return result;
 });
 
 // ── App Events ────────────────────────────────────
