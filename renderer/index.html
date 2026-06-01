@@ -114,6 +114,7 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 const S={
   user:null, step:0, page:'compose',
   region:'sa', trends:[], selTrends:[], trendsReal:false, trendsError:'',
+  fixedTags: true, // هاشتاقات ثابتة مفعّلة افتراضياً
   bsSrc:'noon', products:[],
   afUrl:'', prodDesc:'', tone:'hype',
   tweet:'', schedMode:'now', schedTime:'',
@@ -211,6 +212,17 @@ function renderS0(){
   ${S.trends.length?`<div class="tg">${cards}</div>`:''}
   ${!S.trends.length&&!S.trendsError?'<div style="color:#6b7280;font-size:13px;text-align:center;padding:20px">اضغط "جلب الترندات" للبدء</div>':''}
   ${S.selTrends.length?`<div class="card"><div class="ct">✅ الترندات المختارة</div><div>${tags}</div></div>`:''}
+  <div class="card" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#e0e0e0">هاشتاقات ثابتة</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:3px">#فيصل_يختار #تخفيضات — تُضاف تلقائياً لكل تغريدة</div>
+      </div>
+      <div onclick="S.fixedTags=!S.fixedTags;render()" style="width:40px;height:22px;border-radius:11px;background:${S.fixedTags?'#1d9bf0':'#1a2540'};cursor:pointer;position:relative;transition:all .2s">
+        <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;${S.fixedTags?'right:2px':'left:2px'};transition:all .2s"></div>
+      </div>
+    </div>
+  </div>
   <div style="display:flex;gap:10px;margin-top:8px">
     <button class="btn btn-p" id="btnN0" ${S.selTrends.length===0?'disabled':''}>التالي ← التغريدة</button>
     <button class="btn btn-g" onclick="S.selTrends=[];S.step=1;render()">تخطي بدون ترندات</button>
@@ -405,7 +417,7 @@ async function genTweet(){
   S.afUrl=af; S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
   const btn=document.getElementById('btnGen'), ld=document.getElementById('genLd');
   btn.disabled=true; if(ld) ld.style.display='block';
-  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone});
+  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone, fixedTags:S.fixedTags});
   if(r.success) S.tweet=r.tweet;
   btn.disabled=false; if(ld) ld.style.display='none';
   render();
