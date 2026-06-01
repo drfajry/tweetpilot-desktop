@@ -12,49 +12,25 @@ const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // �
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
 
-// ── Device ID ─────────────────────────────────────
-function getDeviceId() {
-  const { machineIdSync } = require('node-machine-id');
-  try { return machineIdSync(true); } catch(e) { return require('os').hostname(); }
-}
 
 // ── التحقق من الترخيص ────────────────────────────
 async function verifyLicense(code) {
-  const deviceId = getDeviceId();
-  return new Promise((resolve) => {
-    const { net } = require('electron');
-    const body = JSON.stringify({ code, device_id: deviceId });
-    const request = net.request({
-      url: `${LICENSE_SERVER}/api/verify`,
+  const deviceId = require('os').hostname() + '-' + require('os').platform();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    const response = await fetch(`${LICENSE_SERVER}/api/verify`, {
       method: 'POST',
-      session: require('electron').session.defaultSession,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, device_id: deviceId }),
+      signal: controller.signal,
     });
-    request.setHeader('Content-Type', 'application/json');
-    request.setHeader('Content-Length', Buffer.byteLength(body).toString());
-
-    let data = '';
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      request.abort();
-      resolve({ valid: false, error: 'انتهت مهلة الاتصال بالسيرفر' });
-    }, 15000);
-
-    request.on('response', (response) => {
-      response.on('data', chunk => { data += chunk.toString(); });
-      response.on('end', () => {
-        if (timedOut) return;
-        clearTimeout(timer);
-        try { resolve(JSON.parse(data)); }
-        catch(e) { resolve({ valid: false, error: 'خطأ في الاستجابة' }); }
-      });
-    });
-    request.on('error', (e) => {
-      if (!timedOut) { clearTimeout(timer); resolve({ valid: false, error: 'تعذر الاتصال: ' + e.message }); }
-    });
-    request.write(body);
-    request.end();
-  });
+    clearTimeout(timer);
+    return await response.json();
+  } catch(e) {
+    if (e.name === 'AbortError') return { valid: false, error: 'انتهت مهلة الاتصال' };
+    return { valid: false, error: 'تعذر الاتصال بالسيرفر: ' + e.message };
+  }
 }
 
 async function checkStoredLicense() {
