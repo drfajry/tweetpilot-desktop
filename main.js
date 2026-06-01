@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain, shell, session, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
+const https = require('https');
 const { TwitterApi } = require('twitter-api-v2');
 const Database = require('better-sqlite3');
 const cron = require('node-cron');
@@ -44,21 +45,51 @@ function initDB() {
   `);
 }
 
-// ── بناء Twitter client بـ OAuth 2.0 ──────────────
-// FIX #1: الطريقة الصحيحة لبناء client للنشر بـ OAuth2 PKCE
-function buildClient(row) {
-  return new TwitterApi({
-    clientId: CLIENT_ID,
-    clientSecret: CLIENT_SECRET,
-  }).readWrite;
-  // نستخدم accessToken مباشرةً كـ Bearer token من نوع OAuth2
-  // twitter-api-v2 يقبل هذا الشكل:
+// ── النشر المباشر عبر X API v2 ───────────────────
+// الحل الصحيح: OAuth2 User Access Token يُستخدم كـ Bearer في Authorization header
+// twitter-api-v2 تُعامله كـ App Bearer (app-only) عند تمريره كـ string
+// لذا نستدعي X API مباشرة بـ Node https
+function postToXApi(accessToken, text) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({ text });
+    const options = {
+      hostname: 'api.twitter.com',
+      path: '/2/tweets',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'User-Agent': 'nashir-app/1.0',
+      },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve({ success: true, data: parsed });
+          } else {
+            resolve({ success: false, status: res.statusCode, data: parsed });
+          }
+        } catch(e) {
+          resolve({ success: false, status: res.statusCode, raw: data });
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
-// الطريقة الصحيحة فعلاً:
-function getAuthedClient(accessToken) {
-  // OAuth2 access token يُستخدم هكذا في twitter-api-v2
-  return new TwitterApi(accessToken);
+// تجديد الـ access token
+async function refreshAccessToken(refreshToken) {
+  const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
+  const result = await client.refreshOAuth2Token(refreshToken);
+  return result;
 }
 
 // ── النوافذ ───────────────────────────────────────
@@ -101,7 +132,7 @@ async function handleCallback(callbackUrl) {
     if (!code || state !== oauthState) throw new Error('رابط غير صحيح');
 
     const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-    const { client: loggedClient, accessToken, refreshToken, expiresIn } =
+    const { client: loggedClient, accessToken, refreshToken } =
       await client.loginWithOAuth2({ code, codeVerifier: oauthCodeVerifier, redirectUri: CALLBACK_URL });
 
     const me = await loggedClient.v2.me({ 'user.fields': ['profile_image_url','name'] });
@@ -165,78 +196,73 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }
     .replace(/{url}/g, affiliateUrl)
     .replace(/{trends}/g, trendTags);
 
-  // FIX #5: اقتطاع التغريدة إذا تجاوزت 280 حرفاً
+  // اقتطاع تلقائي إذا تجاوز 280 حرفاً
   if (tweet.length > 280) {
-    // احتفظ بالرابط والترندات، اقتطع الوصف
-    const urlAndTrends = `\n${affiliateUrl}\n${trendTags}`;
-    const maxDescLen = 280 - urlAndTrends.length - 5;
-    const lines = tweet.split('\n');
-    // الأسطر الأولى هي النص الترويجي، آخر سطرين هم URL والترندات
-    const textLines = lines.slice(0, -2).join('\n');
-    const trimmed = textLines.length > maxDescLen
-      ? textLines.substring(0, maxDescLen) + '…'
-      : textLines;
-    tweet = trimmed + urlAndTrends;
+    const suffix = `\n${affiliateUrl}\n${trendTags}`;
+    const maxText = 280 - suffix.length - 4;
+    const lines = tweet.split('\n').slice(0, -2);
+    const text = lines.join('\n');
+    tweet = (text.length > maxText ? text.substring(0, maxText) + '…' : text) + suffix;
   }
 
   return { success: true, tweet, charCount: tweet.length };
 });
 
-// FIX #1: النشر الصحيح بـ OAuth 2.0
+// ── النشر — الإصلاح الجذري ───────────────────────
 ipcMain.handle('post-tweet', async (_, { content }) => {
   const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
-  if (!row) return { success: false, error: 'غير مسجل الدخول' };
+  if (!row) return { success: false, error: 'غير مسجل الدخول — يرجى ربط الحساب أولاً' };
+  if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length})` };
 
-  // التحقق من الطول قبل النشر
-  if (content.length > 280) {
-    return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length} حرف)` };
-  }
+  // المحاولة الأولى بالـ access token الحالي
+  let result = await postToXApi(row.access_token, content);
 
-  try {
-    // OAuth2 access token: يُمرر مباشرة كـ string
-    const client = new TwitterApi(row.access_token);
-    const result = await client.v2.tweet(content);
-    db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
-      content, result.data.id, 'posted'
-    );
-    return { success: true, tweetId: result.data.id };
-  } catch(e) {
-    // تفاصيل الخطأ الكاملة
-    const errDetail = e.data ? JSON.stringify(e.data) : e.message;
-    console.error('[post-tweet error]', errDetail);
-    // إذا كان خطأ 401 — Token منتهي، نحاول التجديد
-    if (e.code === 401 && row.refresh_token) {
-      try {
-        const refreshed = await new TwitterApi({
-          clientId: CLIENT_ID,
-          clientSecret: CLIENT_SECRET,
-        }).refreshOAuth2Token(row.refresh_token);
-        db.prepare('UPDATE auth SET access_token=?, refresh_token=? WHERE id=1').run(
-          refreshed.accessToken, refreshed.refreshToken || row.refresh_token
-        );
-        const newClient = new TwitterApi(refreshed.accessToken);
-        const result2 = await newClient.v2.tweet(content);
-        db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
-          content, result2.data.id, 'posted'
-        );
-        return { success: true, tweetId: result2.data.id };
-      } catch(e2) {
-        return { success: false, error: 'انتهت صلاحية التوكن — يرجى إعادة الربط: ' + e2.message };
-      }
+  // إذا كان 401 وعندنا refresh token → نجدد ثم نعيد المحاولة
+  if (!result.success && result.status === 401 && row.refresh_token) {
+    console.log('[post-tweet] 401 received, attempting token refresh...');
+    try {
+      const refreshed = await refreshAccessToken(row.refresh_token);
+      db.prepare('UPDATE auth SET access_token=?, refresh_token=? WHERE id=1').run(
+        refreshed.accessToken,
+        refreshed.refreshToken || row.refresh_token
+      );
+      result = await postToXApi(refreshed.accessToken, content);
+    } catch(refreshErr) {
+      return {
+        success: false,
+        error: `انتهت صلاحية الجلسة — يرجى إعادة ربط الحساب.\n(${refreshErr.message})`,
+      };
     }
-    return { success: false, error: errDetail };
   }
+
+  if (result.success) {
+    const tweetId = result.data?.data?.id;
+    db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
+      content, tweetId || '', 'posted'
+    );
+    return { success: true, tweetId };
+  }
+
+  // بناء رسالة خطأ مفهومة
+  const errData = result.data || {};
+  const detail  = errData.detail || errData.title || JSON.stringify(errData);
+  const hint = result.status === 401
+    ? '\n\n✋ تأكد من:\n• صلاحية التطبيق: Read+Write في X Developer Portal\n• إعادة ربط الحساب بعد تغيير الصلاحيات'
+    : result.status === 403
+    ? '\n\n✋ خطأ 403: التطبيق لا يملك صلاحية الكتابة\nاذهب إلى X Developer Portal وغيّر App Permissions إلى Read+Write ثم أعد الربط'
+    : result.status === 429
+    ? '\n\n⏰ تم تجاوز حد الطلبات — انتظر قليلاً ثم أعد المحاولة'
+    : '';
+
+  return { success: false, error: `خطأ ${result.status}: ${detail}${hint}` };
 });
 
 ipcMain.handle('schedule-tweet', (_, { content, scheduledAt }) => {
-  if (content.length > 280) {
-    return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length} حرف)` };
-  }
+  if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length})` };
   const r = db.prepare('INSERT INTO scheduled_tweets (content, scheduled_at) VALUES (?,?)').run(content, scheduledAt);
   return { success: true, id: r.lastInsertRowid };
 });
 
-// FIX #2: جلب التغريدات المجدولة (pending + failed + posted)
 ipcMain.handle('get-scheduled', () => {
   return db.prepare('SELECT * FROM scheduled_tweets ORDER BY scheduled_at DESC LIMIT 50').all();
 });
@@ -250,71 +276,53 @@ ipcMain.handle('get-history', () => {
   return db.prepare('SELECT * FROM tweet_history ORDER BY posted_at DESC LIMIT 50').all();
 });
 
-// FIX #3: ترندات حقيقية عبر X API v2
+// ── ترندات حقيقية ─────────────────────────────────
 ipcMain.handle('fetch-trends', async (_, { region }) => {
   const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
   if (!row) return { success: false, error: 'غير مسجل الدخول', trends: [] };
 
-  // Woeid للمناطق (يحتاج Twitter API v1.1 - متاح للجميع)
   const WOEID = { sa: 349204, ae: 349217, eg: 23424802, world: 1 };
   const woeid = WOEID[region] || WOEID.sa;
 
   try {
-    // Twitter v1.1 trends (لا يزال مجاناً)
-    const client = new TwitterApi(row.access_token);
-    const trends = await client.v1.trendsByPlace(woeid);
+    const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
+    // نستخدم الـ access token مع v1 trends
+    const userClient = new TwitterApi(row.access_token);
+    const trends = await userClient.v1.trendsByPlace(woeid);
     const list = trends[0]?.trends?.slice(0, 10).map(t => ({
       name: t.name,
       tweet_volume: t.tweet_volume || null,
-      url: t.url,
     })) || [];
     return { success: true, trends: list };
   } catch(e) {
-    console.error('[fetch-trends error]', e.message);
-    // Fallback: ترندات محدثة يومياً إذا فشل الـ API
+    console.error('[fetch-trends]', e.message);
     return { success: false, error: e.message, trends: [] };
   }
 });
 
-// FIX #4: منتجات نون الحقيقية عبر scraping أو Amazon PA-API
+// ── منتجات (احتياطي) ──────────────────────────────
 ipcMain.handle('fetch-bestsellers', async (_, source) => {
-  // Amazon Product Advertising API - يحتاج credentials منفصلة
-  // في الوقت الحالي: بيانات محدثة أسبوعياً + رابط مباشر لصفحة البيسيلر
-  const LIVE_LINKS = {
-    amazon: 'https://www.amazon.sa/gp/bestsellers/electronics/',
-    noon: 'https://www.noon.com/saudi-ar/deals/',
-    aliexpress: 'https://www.aliexpress.com/ssr/300002660/Deals-HomePage',
-  };
-
-  // للحصول على منتجات حقيقية، افتح الصفحة في المتصفح
-  // هذا يتطلب تكامل Amazon PA-API أو Noon Affiliate API
   const mocks = {
     amazon: [
-      { name:'سماعات AirPods Pro 2', brand:'Apple', price:'799 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/', real: false },
-      { name:'شاشة LG 27 بوصة 4K', brand:'LG', price:'1299 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/', real: false },
-      { name:'ماوس MX Master 3S', brand:'Logitech', price:'349 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/', real: false },
-      { name:'كيبورد ميكانيكي K8 Pro', brand:'Keychron', price:'549 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/', real: false },
+      { name:'سماعات AirPods Pro 2', brand:'Apple', price:'799 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
+      { name:'شاشة LG 27 بوصة 4K', brand:'LG', price:'1299 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
+      { name:'ماوس MX Master 3S', brand:'Logitech', price:'349 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
+      { name:'كيبورد Keychron K8', brand:'Keychron', price:'549 SAR', url:'https://www.amazon.sa/gp/bestsellers/electronics/' },
     ],
     noon: [
-      { name:'سماعات Galaxy Buds2 Pro', brand:'Samsung', price:'499 SAR', url:'https://www.noon.com/saudi-ar/electronics/', real: false },
-      { name:'ساعة Mi Band 8 Pro', brand:'Xiaomi', price:'229 SAR', url:'https://www.noon.com/saudi-ar/electronics/', real: false },
-      { name:'مكبر Charge 5', brand:'JBL', price:'699 SAR', url:'https://www.noon.com/saudi-ar/electronics/', real: false },
-      { name:'شاحن 65W GaN', brand:'Anker', price:'149 SAR', url:'https://www.noon.com/saudi-ar/electronics/', real: false },
+      { name:'سماعات Galaxy Buds2 Pro', brand:'Samsung', price:'499 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
+      { name:'ساعة Mi Band 8 Pro', brand:'Xiaomi', price:'229 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
+      { name:'مكبر Charge 5', brand:'JBL', price:'699 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
+      { name:'شاحن 65W GaN', brand:'Anker', price:'149 SAR', url:'https://www.noon.com/saudi-ar/electronics/' },
     ],
     aliexpress: [
-      { name:'إضاءة RGB للغرفة', brand:'Govee', price:'$18.99', url:'https://www.aliexpress.com/item/flash_deals.html', real: false },
-      { name:'حامل هاتف مغناطيسي', brand:'', price:'$6.99', url:'https://www.aliexpress.com/item/flash_deals.html', real: false },
-      { name:'سماعات TWS ANC', brand:'QCY', price:'$22.99', url:'https://www.aliexpress.com/item/flash_deals.html', real: false },
-      { name:'بطارية محمولة 30000mAh', brand:'Baseus', price:'$24.99', url:'https://www.aliexpress.com/item/flash_deals.html', real: false },
+      { name:'إضاءة RGB للغرفة', brand:'Govee', price:'$18.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
+      { name:'حامل هاتف مغناطيسي', brand:'', price:'$6.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
+      { name:'سماعات TWS ANC', brand:'QCY', price:'$22.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
+      { name:'بطارية محمولة 30000mAh', brand:'Baseus', price:'$24.99', url:'https://www.aliexpress.com/ssr/300002660/Deals-HomePage' },
     ],
   };
-
-  return {
-    success: true,
-    products: mocks[source] || mocks.noon,
-    liveUrl: LIVE_LINKS[source],
-    note: 'بيانات تجريبية — لتفعيل البيانات الحقيقية راجع README',
-  };
+  return { success: true, products: mocks[source] || mocks.noon };
 });
 
 // ── App Events ────────────────────────────────────
@@ -351,7 +359,7 @@ app.whenReady().then(() => {
   initDB();
   createMainWindow();
 
-  // FIX #2: cron يُحدّث الواجهة بعد النشر
+  // Cron: نشر التغريدات المجدولة كل دقيقة
   cron.schedule('* * * * *', async () => {
     const now = new Date().toISOString();
     const pending = db.prepare(
@@ -361,27 +369,36 @@ app.whenReady().then(() => {
     for (const t of pending) {
       const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
       if (!row) continue;
-      try {
-        const client = new TwitterApi(row.access_token);
-        const result = await client.v2.tweet(t.content);
-        db.prepare('UPDATE scheduled_tweets SET status="posted", tweet_id=? WHERE id=?').run(result.data.id, t.id);
-        db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(t.content, result.data.id, 'posted');
-        // أخطر الواجهة
-        mainWindow?.webContents.send('scheduled-posted', { id: t.id, tweetId: result.data.id });
-      } catch(e) {
-        const errMsg = e.data ? JSON.stringify(e.data) : e.message;
+
+      let result = await postToXApi(row.access_token, t.content);
+
+      if (!result.success && result.status === 401 && row.refresh_token) {
+        try {
+          const refreshed = await refreshAccessToken(row.refresh_token);
+          db.prepare('UPDATE auth SET access_token=?, refresh_token=? WHERE id=1').run(
+            refreshed.accessToken, refreshed.refreshToken || row.refresh_token
+          );
+          result = await postToXApi(refreshed.accessToken, t.content);
+        } catch(e) {
+          db.prepare('UPDATE scheduled_tweets SET status="failed", error=? WHERE id=?').run(
+            'انتهت الجلسة: ' + e.message, t.id
+          );
+          mainWindow?.webContents.send('scheduled-failed', { id: t.id });
+          continue;
+        }
+      }
+
+      if (result.success) {
+        const tweetId = result.data?.data?.id;
+        db.prepare('UPDATE scheduled_tweets SET status="posted", tweet_id=? WHERE id=?').run(tweetId, t.id);
+        db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
+          t.content, tweetId || '', 'posted'
+        );
+        mainWindow?.webContents.send('scheduled-posted', { id: t.id, tweetId });
+      } else {
+        const errMsg = result.data?.detail || JSON.stringify(result.data || {});
         db.prepare('UPDATE scheduled_tweets SET status="failed", error=? WHERE id=?').run(errMsg, t.id);
         mainWindow?.webContents.send('scheduled-failed', { id: t.id, error: errMsg });
-        // إذا انتهى التوكن، حاول التجديد
-        if ((e.code === 401 || errMsg.includes('401')) && row.refresh_token) {
-          try {
-            const refreshed = await new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET })
-              .refreshOAuth2Token(row.refresh_token);
-            db.prepare('UPDATE auth SET access_token=?, refresh_token=? WHERE id=1').run(
-              refreshed.accessToken, refreshed.refreshToken || row.refresh_token
-            );
-          } catch(_) {}
-        }
       }
     }
   });
