@@ -241,7 +241,7 @@ function renderS1(){
     <div class="ct">🛍️ المنتجات الأكثر مبيعاً</div>
     <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';render()">${s.l}</button>`).join('')}</div>
     <button class="btn btn-g" id="btnBs" style="width:auto;padding:8px 18px;font-size:12px;margin-bottom:12px">📦 جلب المنتجات</button>
-    ${S.products.length?`<div class="pg">${S.products.map((p,i)=>`<div class="pc ${S.afUrl===p.url&&S.prodDesc===p.name?'sel':''}" onclick="selProd(${i})"><div class="pn">${p.name}</div><div class="pm">${p.brand?p.brand+' · ':''}${p.price}</div></div>`).join('')}</div>`:''}
+    ${S.products.length?`<div class="pg">${S.products.map((p,i)=>`<div class="pc ${S.afUrl===p.url&&S.prodDesc===p.name?'sel':''}" onclick="selProd(${i})"><div class="pn">${p.name}</div><div class="pm">${p.price?p.price+' · ':''} ${p.snippet||''}</div></div>`).join('')}</div>`:''}
   </div>
   <div class="card">
     <div class="ct">🔗 رابط الأفلييت ووصف المنتج</div>
@@ -400,10 +400,12 @@ function toggleTrend(name){
 
 async function fetchBs(){
   const btn=document.getElementById('btnBs');
-  btn.disabled=true; btn.textContent='⏳...';
+  btn.disabled=true; btn.textContent='⏳ جاري الجلب...';
   const r=await window.api.fetchBestsellers(S.bsSrc);
-  S.products=r.products||[];
-  btn.disabled=false; render();
+  if(r.success) S.products=r.products||[];
+  else { S.products=[]; alert('⚠️ فشل جلب المنتجات: '+(r.error||'خطأ غير معروف')); }
+  btn.disabled=false; btn.textContent='📦 جلب المنتجات';
+  render();
 }
 
 function selProd(i){
