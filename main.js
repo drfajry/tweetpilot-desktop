@@ -6,10 +6,51 @@ const Database = require('better-sqlite3');
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
+// ── إعدادات التطبيق ──────────────────────────────
 const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
 const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
+const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
+
+// ── Device ID ─────────────────────────────────────
+function getDeviceId() {
+  const { machineIdSync } = require('node-machine-id');
+  try { return machineIdSync(true); } catch(e) { return require('os').hostname(); }
+}
+
+// ── التحقق من الترخيص ────────────────────────────
+async function verifyLicense(code) {
+  const deviceId = getDeviceId();
+  try {
+    const response = await new Promise((resolve, reject) => {
+      const body = JSON.stringify({ code, device_id: deviceId });
+      const url = new URL(`${LICENSE_SERVER}/api/verify`);
+      const req = https.request({
+        hostname: url.hostname,
+        path: url.pathname,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, (res) => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => resolve(JSON.parse(data)));
+      });
+      req.on('error', reject);
+      req.write(body); req.end();
+    });
+    return response;
+  } catch(e) {
+    return { valid: false, error: 'تعذر الاتصال بالسيرفر: ' + e.message };
+  }
+}
+
+async function checkStoredLicense() {
+  const stored = db.prepare('SELECT * FROM auth WHERE id=2').get();
+  if (!stored || !stored.username) return false; // نستخدم username لتخزين الكود
+  const result = await verifyLicense(stored.username);
+  return result.valid;
+}
 
 // ── قاعدة البيانات ────────────────────────────────
 const DB_PATH = path.join(app.getPath('userData'), 'nashir.db');
@@ -155,6 +196,21 @@ function createMainWindow() {
 }
 
 // ── IPC Handlers ──────────────────────────────────
+ipcMain.handle('verify-license', async (_, code) => {
+  const result = await verifyLicense(code);
+  if (result.valid) {
+    // احفظ الكود محلياً (في جدول auth سطر id=2)
+    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image) VALUES (2, ?, ?, '')`)
+      .run(code, result.plan || 'active');
+  }
+  return result;
+});
+
+ipcMain.handle('check-license', async () => {
+  const valid = await checkStoredLicense();
+  return { valid };
+});
+
 ipcMain.handle('get-auth', async () => {
   const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
   if (row) return row;
@@ -355,15 +411,15 @@ function searchDuckDuckGo(query) {
   });
 }
 
-ipcMain.handle('fetch-bestsellers', async (_, source) => {
-  const QUERIES = {
-    amazon:      'site:amazon.sa أفضل مبيعاً الكترونيات',
-    noon:        'site:noon.com/saudi-ar أفضل مبيعاً الكترونيات',
-    aliexpress:  'site:aliexpress.com أفضل مبيعاً عروض',
+ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
+  const SITE = {
+    amazon:     'site:amazon.sa',
+    noon:       'site:noon.com/saudi-ar',
+    aliexpress: 'site:aliexpress.com',
   };
-
-  const query = QUERIES[source] || QUERIES.noon;
-  const result = await searchDuckDuckGo(query);
+  const site = SITE[source] || SITE.amazon;
+  const searchQuery = `${site} ${query}`;
+  const result = await searchDuckDuckGo(searchQuery);
   return result;
 });
 
