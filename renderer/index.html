@@ -19,7 +19,7 @@ body{background:#070b14;color:#e8eaf0;font-family:'Segoe UI',Tahoma,sans-serif;h
 .sp.active .sp-n{background:#fff;color:#1d9bf0}
 .sp.done .sp-n{background:#1d9bf0;color:#fff}
 .hdr-r{display:flex;align-items:center;gap:8px}
-.ubadge{display:flex;align-items:center;gap:7px;padding:5px 12px;background:#111827;border:1px solid #1d9bf033;border-radius:20px;cursor:pointer}
+.ubadge{display:flex;align-items:center;gap:7px;padding:5px 12px;background:#111827;border:1px solid #1d9bf033;border-radius:20px}
 .uname{font-size:12px;color:#aaa}
 .main{flex:1;overflow-y:auto;padding:24px 20px 40px;max-width:860px;margin:0 auto;width:100%}
 .cs{display:flex;flex-direction:column;align-items:center;justify-content:center;height:65vh;text-align:center;gap:16px}
@@ -33,6 +33,7 @@ body{background:#070b14;color:#e8eaf0;font-family:'Segoe UI',Tahoma,sans-serif;h
 .btn-g{background:#111827;border:1px solid #1a2540;color:#6b7280}
 .btn-big{padding:14px 36px;width:auto;border-radius:14px;font-size:16px;background:linear-gradient(135deg,#1d9bf0,#0d6efd);border:none;color:#fff;cursor:pointer;font-family:inherit;font-weight:700}
 .btn-sm{padding:6px 14px;width:auto;border-radius:8px;font-size:12px}
+.btn-copy{background:linear-gradient(135deg,#00c896,#0d9488);font-size:15px;padding:14px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .card{background:#111827;border:1px solid #1a2540;border-radius:14px;padding:20px;margin-bottom:16px}
 .ct{font-size:13px;font-weight:600;color:#6b7280;margin-bottom:14px}
@@ -54,8 +55,8 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 .pc{padding:10px 12px;border-radius:10px;cursor:pointer;background:#0d1421;border:2px solid #1a2540;transition:all .2s}
 .pc:hover{border-color:#1d9bf033}
 .pc.sel{border-color:#1d9bf0;background:#0c2d4a}
-.pn{font-size:13px;font-weight:600;color:#e0e0e0}
-.pm{font-size:11px;color:#6b7280;margin-top:2px}
+.pn{font-size:12px;font-weight:600;color:#e0e0e0;line-height:1.4}
+.pm{font-size:11px;color:#6b7280;margin-top:3px}
 .tones{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .tone{padding:9px 12px;border-radius:9px;font-size:13px;background:#0d1421;border:2px solid #1a2540;color:#6b7280;cursor:pointer;font-family:inherit;text-align:center}
 .tone.active{background:#1d9bf011;border-color:#1d9bf0;color:#1d9bf0;font-weight:600}
@@ -63,20 +64,6 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 .tbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .tlbl{font-size:12px;color:#1d9bf0;font-weight:600}
 .tcc{font-size:11px;font-weight:700}
-.modes{display:flex;gap:9px;margin-bottom:14px}
-.mode{flex:1;padding:11px;border-radius:9px;font-size:13px;background:#0d1421;border:2px solid #1a2540;color:#6b7280;cursor:pointer;font-family:inherit}
-.mode.active{background:#1d9bf011;border-color:#1d9bf0;color:#1d9bf0;font-weight:600}
-.prev{background:#0d1421;border:1px solid #1a2540;border-radius:12px;padding:16px;margin-bottom:16px}
-.prev-t{font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
-.prev-m{display:flex;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid #1a2540;font-size:12px;color:#6b7280}
-.succ{text-align:center;padding:40px 20px}
-.succ-ic{font-size:60px;margin-bottom:14px}
-.succ-t{font-size:20px;color:#00c896;font-weight:700;margin-bottom:6px}
-.succ-id{font-size:11px;color:#6b7280;margin-bottom:24px;font-family:monospace}
-.succ-b{display:flex;gap:10px;justify-content:center}
-.tag{display:inline-block;padding:2px 9px;margin:2px 3px;background:#1d9bf022;border:1px solid #1d9bf044;border-radius:10px;font-size:11px;color:#7ab8f5}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid #ffffff33;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
 .lbar{width:100%;height:3px;background:#1a2540;border-radius:2px;overflow:hidden;margin-top:8px}
 .lfill{height:100%;background:linear-gradient(90deg,#7c3aed,#1d9bf0);animation:sl 1.4s infinite;width:35%}
 @keyframes sl{0%{transform:translateX(-200%)}100%{transform:translateX(500%)}}
@@ -85,25 +72,31 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 .sched-table{width:100%;border-collapse:collapse;font-size:12px}
 .sched-table th{text-align:right;padding:8px 10px;color:#6b7280;border-bottom:1px solid #1a2540;font-weight:600}
 .sched-table td{padding:9px 10px;border-bottom:1px solid #0d1421;vertical-align:top}
-.sched-table tr:hover td{background:#0d1421}
 .badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600}
-.badge-pending{background:#1d9bf022;color:#1d9bf0}
-.badge-posted{background:#00c89622;color:#00c896}
-.badge-failed{background:#ff444422;color:#ff6b6b}
+.badge-saved{background:#7c3aed22;color:#a78bfa}
 .char-warn{background:#ff44440d;border:1px solid #ff444433;border-radius:9px;padding:10px 13px;font-size:12px;color:#ff8080;margin-bottom:10px}
 .char-ok{background:#00c8960d;border:1px solid #00c89633;border-radius:9px;padding:8px 13px;font-size:12px;color:#00c896}
 .real-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:#00c89622;color:#00c896;border:1px solid #00c89633;margin-right:6px}
 .err-box{background:#ff44440d;border:1px solid #ff444433;border-radius:9px;padding:14px;font-size:12px;color:#ff8080;margin-bottom:14px;line-height:1.8}
+.succ-copy{text-align:center;padding:40px 20px}
+.succ-ic{font-size:60px;margin-bottom:14px}
+.succ-t{font-size:20px;color:#00c896;font-weight:700;margin-bottom:6px}
+.succ-b{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.saved-card{background:#0d1421;border:1px solid #1a2540;border-radius:11px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.saved-text{font-size:13px;line-height:1.7;flex:1;white-space:pre-wrap;word-break:break-word}
+.saved-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #ffffff33;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* toggle switch */
+.tog{width:40px;height:22px;border-radius:11px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.tog-dot{width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left .2s,right .2s}
 </style>
 </head>
 <body>
 <div class="hdr">
   <div class="logo">
     <div class="logo-ic">✈️</div>
-    <div>
-      <div class="logo-t">ناشر</div>
-      <div class="logo-s">النشر الذكي على منصات التواصل</div>
-    </div>
+    <div><div class="logo-t">ناشر</div><div class="logo-s">النشر الذكي على منصات التواصل</div></div>
   </div>
   <div class="steps" id="steps"></div>
   <div class="hdr-r" id="hdrR"></div>
@@ -114,31 +107,81 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 const S={
   user:null, step:0, page:'compose',
   region:'sa', trends:[], selTrends:[], trendsReal:false, trendsError:'',
-  fixedTags: true, // هاشتاقات ثابتة مفعّلة افتراضياً
-  bsSrc:'noon', products:[],
+  fixedTags:true,
+  bsSrc:'amazon', products:[], prodSearch:'',
   afUrl:'', prodDesc:'', tone:'hype',
-  tweet:'', schedMode:'now', schedTime:'',
-  postResult:null, scheduled:[],
+  tweet:'', saved:[],
+  copySuccess:false,
 };
+
 const REGIONS=[{k:'sa',l:'🇸🇦 السعودية'},{k:'world',l:'🌍 العالم'},{k:'ae',l:'🇦🇪 الإمارات'},{k:'eg',l:'🇪🇬 مصر'}];
 const TONES=[{id:'hype',l:'🔥 إثارة'},{id:'informative',l:'📊 معلوماتي'},{id:'funny',l:'😂 فكاهي'},{id:'urgency',l:'⚡ عاجل'}];
-const STEPS=['الترندات','التغريدة','النشر'];
-const SRCS=[{k:'noon',l:'🛍️ نون'},{k:'amazon',l:'📦 أمازون'},{k:'aliexpress',l:'🌐 علي إكسبريس'}];
+const STEPS=['الترندات','التغريدة','الحفظ'];
+const SRCS=[{k:'amazon',l:'📦 أمازون'},{k:'noon',l:'🛍️ نون'},{k:'aliexpress',l:'🌐 علي إكسبريس'}];
 
 async function init(){
+  // أولاً: تحقق من الترخيص
+  const lic = await window.api.checkLicense();
+  if (!lic.valid) {
+    document.getElementById('app').innerHTML = renderLicense();
+    bindLicense();
+    renderHdr();
+    return;
+  }
   S.user = await window.api.getAuth();
   window.api.onAuthSuccess(u=>{ S.user=u; render(); });
   window.api.onAuthError(e=>{ alert('خطأ في الربط: '+e); render(); });
-  window.api.onScheduledPosted(()=>loadScheduled());
-  window.api.onScheduledFailed(()=>loadScheduled());
-  if(S.user) await loadScheduled();
+  loadSaved();
   render();
 }
 
-async function loadScheduled(){
-  S.scheduled = await window.api.getScheduled();
+function renderLicense(){
+  return `<div class="cs">
+    <div class="cs-ic">🔐</div>
+    <div class="cs-t">أدخل كود التفعيل</div>
+    <div class="cs-s">احصل على كودك من خلال التواصل معنا</div>
+    <div style="width:100%;max-width:340px">
+      <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;margin-bottom:12px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل</button>
+      <div id="licError" style="color:#ff8080;font-size:13px;margin-top:12px;text-align:center"></div>
+    </div>
+  </div>`;
+}
+function bindLicense(){
+  document.getElementById('btnActivate')?.addEventListener('click', activateLicense);
+  document.getElementById('licInput')?.addEventListener('keydown', e=>{ if(e.key==='Enter') activateLicense(); });
+}
+async function activateLicense(){
+  const code = document.getElementById('licInput')?.value?.trim();
+  if (!code) return;
+  const btn = document.getElementById('btnActivate');
+  const err = document.getElementById('licError');
+  btn.disabled=true; btn.textContent='⏳ جاري التحقق...';
+  err.textContent='';
+  const result = await window.api.verifyLicense(code);
+  if (result.valid) {
+    btn.textContent='✅ تم التفعيل!';
+    setTimeout(()=>{ S.licensed=true; init(); }, 800);
+  } else {
+    err.textContent = '❌ ' + (result.error || 'كود غير صحيح');
+    btn.disabled=false; btn.textContent='✅ تفعيل';
+  }
 }
 
+// ── حفظ محلي ─────────────────────────────────────
+function loadSaved(){
+  try { S.saved = JSON.parse(localStorage.getItem('nashir_saved')||'[]'); } catch(e){ S.saved=[]; }
+}
+function saveTweet(text){
+  S.saved.unshift({ id: Date.now(), text, date: new Date().toLocaleString('ar-SA') });
+  localStorage.setItem('nashir_saved', JSON.stringify(S.saved.slice(0,50)));
+}
+function deleteSaved(id){
+  S.saved = S.saved.filter(x=>x.id!==id);
+  localStorage.setItem('nashir_saved', JSON.stringify(S.saved));
+}
+
+// ── Render ────────────────────────────────────────
 function render(){
   renderHdr();
   const app=document.getElementById('app');
@@ -147,11 +190,9 @@ function render(){
     if(S.step===0){ app.innerHTML=renderS0(); bindS0(); }
     else if(S.step===1){ app.innerHTML=renderS1(); bindS1(); }
     else if(S.step===2){ app.innerHTML=renderS2(); bindS2(); }
-  } else if(S.page==='scheduled'){
-    app.innerHTML=renderScheduledPage(); bindScheduledPage();
-  } else if(S.page==='history'){
-    app.innerHTML='<div style="text-align:center;padding:40px;color:#6b7280"><span class="spin"></span> تحميل...</div>';
-    renderHistoryPageAsync();
+  } else if(S.page==='saved'){
+    app.innerHTML=renderSavedPage();
+    bindSavedPage();
   }
 }
 
@@ -162,11 +203,9 @@ function renderHdr(){
     if(S.page==='compose'){
       st.innerHTML=STEPS.map((n,i)=>`<div class="sp ${i===S.step?'active':i<S.step?'done':''}" onclick="if(${i}<${S.step})goStep(${i})"><span class="sp-n">${i<S.step?'✓':i+1}</span>${n}</div>`).join('');
     } else { st.innerHTML=''; }
-    const pendingCount = S.scheduled.filter(x=>x.status==='pending').length;
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('scheduled')" style="${S.page==='scheduled'?'color:#1d9bf0;border-color:#1d9bf0':''}">🕐 المجدولة${pendingCount?` <span style="background:#1d9bf0;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${pendingCount}</span>`:''}</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('history')" style="${S.page==='history'?'color:#1d9bf0;border-color:#1d9bf0':''}">📋 السجل</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <div class="ubadge"><span class="uname">@${S.user.username}</span></div>
       <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="logout()">خروج</button>`;
   } else { st.innerHTML=''; hr.innerHTML=''; }
@@ -182,31 +221,29 @@ function renderConnect(){
 }
 function bindConnect(){
   document.getElementById('btnConn')?.addEventListener('click', async()=>{
-    const btn = document.getElementById('btnConn');
+    const btn=document.getElementById('btnConn');
     btn.disabled=true; btn.textContent='⏳ جاري الربط...';
     const r=await window.api.startOAuth();
-    if(!r.success){ alert('فشل الربط: '+r.error); btn.disabled=false; btn.textContent='🔗 ربط حساب X'; }
+    if(!r.success){ alert('فشل: '+r.error); btn.disabled=false; btn.textContent='🔗 ربط حساب X'; }
   });
 }
 
 // ── الخطوة 0: الترندات ──────────────────────────
 function renderS0(){
-  const cards = S.trends.map(t=>`<div class="tc ${S.selTrends.find(s=>s.name===t.name)?'sel':''}" onclick="toggleTrend('${t.name.replace(/'/g,"\\'")}')">
+  const cards=S.trends.map(t=>`<div class="tc ${S.selTrends.find(s=>s.name===t.name)?'sel':''}" onclick="toggleTrend('${t.name.replace(/'/g,"\\'")}')">
     <div style="display:flex;justify-content:space-between">
       <span class="tn">${t.name}</span>
       ${S.selTrends.find(s=>s.name===t.name)?'<span style="width:16px;height:16px;border-radius:50%;background:#1d9bf0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span>':''}
     </div>
-    <div class="tv">${t.title||( t.tweet_volume?t.tweet_volume.toLocaleString()+' بحث':'خبر حالي')}</div>
+    <div class="tv">ترند حالي</div>
   </div>`).join('');
-  const tags = S.selTrends.map(t=>`<span class="tag">${t.name}</span>`).join('');
+  const tags=S.selTrends.map(t=>`<span style="display:inline-block;padding:2px 9px;margin:2px 3px;background:#1d9bf022;border:1px solid #1d9bf044;border-radius:10px;font-size:11px;color:#7ab8f5">${t.name}</span>`).join('');
   return `<div class="ptit">الترندات الحالية</div>
   <div class="psub">اختر حتى 3 ترندات لتضمينها في تغريدتك</div>
   <div class="card">
     <div class="ct">🌍 المنطقة</div>
     <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
-    <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">
-      🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}
-    </button>
+    <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
   ${S.trends.length?`<div class="tg">${cards}</div>`:''}
@@ -216,15 +253,15 @@ function renderS0(){
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:13px;font-weight:600;color:#e0e0e0">هاشتاقات ثابتة</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:3px">#فيصل_يختار #تخفيضات — تُضاف تلقائياً لكل تغريدة</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:3px">#فيصل_يختار #تخفيضات — تُضاف تلقائياً</div>
       </div>
-      <div onclick="S.fixedTags=!S.fixedTags;render()" style="width:40px;height:22px;border-radius:11px;background:${S.fixedTags?'#1d9bf0':'#1a2540'};cursor:pointer;position:relative;transition:all .2s">
-        <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;${S.fixedTags?'right:2px':'left:2px'};transition:all .2s"></div>
+      <div class="tog" style="background:${S.fixedTags?'#1d9bf0':'#1a2540'}" onclick="S.fixedTags=!S.fixedTags;render()">
+        <div class="tog-dot" style="${S.fixedTags?'right:2px':'left:2px'}"></div>
       </div>
     </div>
   </div>
   <div style="display:flex;gap:10px;margin-top:8px">
-    <button class="btn btn-p" id="btnN0" ${S.selTrends.length===0?'disabled':''}>التالي ← التغريدة</button>
+    <button class="btn btn-p" id="btnN0">التالي ← بناء التغريدة</button>
     <button class="btn btn-g" onclick="S.selTrends=[];S.step=1;render()">تخطي بدون ترندات</button>
   </div>`;
 }
@@ -238,15 +275,30 @@ function renderS1(){
   const cc=S.tweet.length, overLimit=cc>280;
   return `<div class="ptit">بناء التغريدة</div>
   <div class="card">
-    <div class="ct">🛍️ المنتجات الأكثر مبيعاً</div>
-    <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';render()">${s.l}</button>`).join('')}</div>
-    <button class="btn btn-g" id="btnBs" style="width:auto;padding:8px 18px;font-size:12px;margin-bottom:12px">📦 جلب المنتجات</button>
-    ${S.products.length?`<div class="pg">${S.products.map((p,i)=>`<div class="pc ${S.afUrl===p.url&&S.prodDesc===p.name?'sel':''}" onclick="selProd(${i})"><div class="pn">${p.name}</div><div class="pm">${p.price?p.price+' · ':''} ${p.snippet||''}</div></div>`).join('')}</div>`:''}
+    <div class="ct">🛍️ بحث عن منتج</div>
+    <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';S.products=[];render()">${s.l}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="prodSearch" placeholder="ابحث عن منتج... مثل: سماعات لاسلكية" value="${S.prodSearch}" style="flex:1">
+      <button class="btn btn-p" id="btnBs" style="width:auto;padding:8px 16px;font-size:12px">🔍 بحث</button>
+    </div>
+    ${S.products.length?`<div class="pg">${S.products.map((p,i)=>`<div class="pc ${S.afUrl===p.url&&S.prodDesc===p.name?'sel':''}" onclick="selProd(${i})">
+      <div class="pn">${p.name}</div>
+      <div class="pm">${p.price?'💰 '+p.price:p.snippet||''}</div>
+    </div>`).join('')}</div>`:''}
   </div>
   <div class="card">
     <div class="ct">🔗 رابط الأفلييت ووصف المنتج</div>
-    <div class="f"><label>رابط الأفلييت *</label><input id="afUrl" placeholder="https://..." value="${S.afUrl}"></div>
-    <div class="f"><label>وصف المنتج (اختياري)</label><input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${S.prodDesc}"></div>
+    <div class="f">
+      <label>رابط الأفلييت *</label>
+      <input id="afUrl" placeholder="https://..." value="${S.afUrl}">
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1" class="f">
+        <label>وصف المنتج (اختياري)</label>
+        <input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${S.prodDesc}">
+      </div>
+      <button class="btn btn-g" style="width:auto;padding:10px 14px;font-size:12px;margin-bottom:14px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';render()" title="مسح وبدء من جديد">🗑️</button>
+    </div>
   </div>
   <div class="card">
     <div class="ct">🎭 أسلوب التغريدة</div>
@@ -256,142 +308,97 @@ function renderS1(){
   <div id="genLd" style="display:none;margin-bottom:12px"><div class="lbar"><div class="lfill"></div></div></div>
   ${S.tweet?`
     <div class="tbox">
-      <div class="tbar"><span class="tlbl">معاينة التغريدة</span><span class="tcc" style="color:${overLimit?'#ff4444':cc>240?'#ff8800':'#00c896'}">${cc}/280</span></div>
-      <textarea id="tweetEdit" style="border:none;background:transparent;resize:vertical;min-height:80px" oninput="S.tweet=this.value;updCC(this.value.length)">${S.tweet}</textarea>
+      <div class="tbar">
+        <span class="tlbl">معاينة التغريدة</span>
+        <span class="tcc" style="color:${overLimit?'#ff4444':cc>240?'#ff8800':'#00c896'}">${cc}/280</span>
+      </div>
+      <textarea id="tweetEdit" style="border:none;background:transparent;resize:vertical;min-height:100px" oninput="S.tweet=this.value;updCC(this.value.length)">${S.tweet}</textarea>
     </div>
     ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً — يرجى اختصارها</div>`:`<div class="char-ok">✅ الطول مناسب (${cc}/280)</div>`}
     <div style="display:flex;gap:10px;margin-top:12px">
-      <button class="btn btn-p" id="btnN1" ${overLimit||cc===0?'disabled':''}>التالي ← النشر</button>
-      <button class="btn btn-g" onclick="S.tweet='';render()">إعادة التوليد</button>
-    </div>`:``}`;
+      <button class="btn btn-p" id="btnN1" ${overLimit||cc===0?'disabled':''}>التالي ← حفظ ونسخ</button>
+      <button class="btn btn-g" onclick="S.tweet='';render()">🔄 إعادة التوليد</button>
+    </div>
+  `:``}`;
 }
 function bindS1(){
+  document.getElementById('prodSearch')?.addEventListener('input', e=>S.prodSearch=e.target.value);
   document.getElementById('btnBs')?.addEventListener('click', fetchBs);
+  document.getElementById('prodSearch')?.addEventListener('keydown', e=>{ if(e.key==='Enter') fetchBs(); });
   document.getElementById('btnGen')?.addEventListener('click', genTweet);
   document.getElementById('btnN1')?.addEventListener('click', ()=>{ S.step=2; render(); });
 }
 
-// ── الخطوة 2: النشر ─────────────────────────────
+// ── الخطوة 2: حفظ ونسخ (بدل النشر) ─────────────
 function renderS2(){
-  if(S.postResult) return `<div class="succ">
-    <div class="succ-ic">🎉</div>
-    <div class="succ-t">${S.postResult.msg}</div>
-    <div class="succ-id">${S.postResult.tid?'Tweet ID: '+S.postResult.tid:S.postResult.schedAt?'موعد النشر: '+new Date(S.postResult.schedAt).toLocaleString('ar-SA'):''}</div>
+  if(S.copySuccess) return `<div class="succ-copy">
+    <div class="succ-ic">📋</div>
+    <div class="succ-t">تم النسخ! الصقها في X</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:20px">التغريدة جاهزة في الحافظة</div>
     <div class="succ-b">
       <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="resetW()">+ تغريدة جديدة</button>
-      ${!S.postResult.tid?`<button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="goPage('scheduled')">عرض المجدولة ↗</button>`:''}
+      <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="goPage('saved')">💾 المحفوظات</button>
+      <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="openX()">فتح X ↗</button>
     </div>
   </div>`;
+
   const cc=S.tweet.length, overLimit=cc>280;
-  return `<div class="ptit">نشر التغريدة</div>
-  <div class="prev"><div class="prev-t">${escHtml(S.tweet)}</div>
-    <div class="prev-m"><span style="color:${overLimit?'#ff4444':'#00c896'};font-weight:700">${cc}/280 حرف</span></div>
+  return `<div class="ptit">حفظ ونسخ التغريدة</div>
+  <div style="background:#0d1421;border:1px solid #1a2540;border-radius:12px;padding:16px;margin-bottom:16px">
+    <div style="font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word">${escHtml(S.tweet)}</div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a2540;font-size:12px;color:${overLimit?'#ff4444':'#00c896'};font-weight:700">${cc}/280 حرف</div>
   </div>
   ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
-  <div class="card">
-    <div class="ct">⏱️ وقت النشر</div>
-    <div class="modes">
-      <button class="mode ${S.schedMode==='now'?'active':''}" onclick="S.schedMode='now';render()">⚡ نشر الآن</button>
-      <button class="mode ${S.schedMode==='sched'?'active':''}" onclick="S.schedMode='sched';render()">🕐 جدولة</button>
+  <div style="display:flex;gap:10px;flex-direction:column">
+    <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ التغريدة للحافظة</button>
+    <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
+      <button class="btn btn-g" onclick="openX()">فتح X ↗</button>
     </div>
-    ${S.schedMode==='sched'?`<div class="f"><label>موعد النشر</label><input id="schedT" type="datetime-local" value="${S.schedTime}"></div>`:''}
-  </div>
-  <div style="display:flex;gap:10px">
-    <button class="btn btn-p" id="btnPost" style="font-size:15px;padding:14px" ${overLimit||(S.schedMode==='sched'&&!S.schedTime)?'disabled':''}>
-      ${S.schedMode==='now'?'🚀 نشر الآن':'📅 تأكيد الجدولة'}
-    </button>
-    <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
-  </div>
-  <div id="postLd" style="display:none;margin-top:10px;text-align:center;font-size:12px;color:#1d9bf0"><span class="spin"></span> جاري النشر...</div>`;
+  </div>`;
 }
 function bindS2(){
-  document.getElementById('schedT')?.addEventListener('input', e=>S.schedTime=e.target.value);
-  document.getElementById('btnPost')?.addEventListener('click', postTweet);
+  document.getElementById('btnCopy')?.addEventListener('click', copyTweet);
+  document.getElementById('btnSave')?.addEventListener('click', ()=>{
+    saveTweet(S.tweet);
+    alert('✅ تم الحفظ في المحفوظات');
+    render();
+  });
 }
 
-// ── صفحة المجدولة ────────────────────────────────
-function renderScheduledPage(){
-  const pending=S.scheduled.filter(x=>x.status==='pending');
-  const done=S.scheduled.filter(x=>x.status!=='pending');
-  return `<div class="ptit">التغريدات المجدولة</div>
-  <button class="btn btn-g" id="btnRefreshSched" style="width:auto;padding:8px 18px;font-size:12px;margin-bottom:16px">🔄 تحديث</button>
-  ${pending.length===0?`<div class="card"><div style="text-align:center;color:#6b7280;padding:20px">لا توجد تغريدات مجدولة حالياً</div></div>`:`
-  <div class="card">
-    <div class="ct">⏳ في الانتظار (${pending.length})</div>
-    <table class="sched-table">
-      <tr><th>التغريدة</th><th>موعد النشر</th><th></th></tr>
-      ${pending.map(t=>`<tr>
-        <td>${escHtml(t.content.substring(0,80))}${t.content.length>80?'...':''}</td>
-        <td style="white-space:nowrap;color:#aaa">${new Date(t.scheduled_at).toLocaleString('ar-SA')}</td>
-        <td><button class="btn btn-g btn-sm" onclick="delSched(${t.id})" style="color:#ff6b6b;border-color:#ff444433">حذف</button></td>
-      </tr>`).join('')}
-    </table>
-  </div>`}
-  ${done.length?`<div class="card">
-    <div class="ct">📋 السابقة (${done.length})</div>
-    <table class="sched-table">
-      <tr><th>التغريدة</th><th>الموعد</th><th>الحالة</th></tr>
-      ${done.slice(0,20).map(t=>`<tr>
-        <td>${escHtml(t.content.substring(0,80))}${t.content.length>80?'...':''}</td>
-        <td style="white-space:nowrap;color:#aaa">${new Date(t.scheduled_at).toLocaleString('ar-SA')}</td>
-        <td><span class="badge ${t.status==='posted'?'badge-posted':'badge-failed'}">${t.status==='posted'?'✅ نُشرت':'❌ فشلت'}</span>${t.error?`<div style="color:#ff8080;font-size:10px;margin-top:3px">${escHtml(t.error.substring(0,100))}</div>`:''}</td>
-      </tr>`).join('')}
-    </table>
-  </div>`:''}`;
+// ── صفحة المحفوظات ───────────────────────────────
+function renderSavedPage(){
+  return `<div class="ptit">المحفوظات</div>
+  <div class="psub">${S.saved.length} تغريدة محفوظة</div>
+  ${S.saved.length===0?`<div class="card"><div style="text-align:center;color:#6b7280;padding:30px">لا توجد تغريدات محفوظة بعد</div></div>`:
+  S.saved.map(t=>`<div class="saved-card">
+    <div class="saved-text">${escHtml(t.text)}</div>
+    <div class="saved-actions">
+      <button class="btn btn-g btn-sm" onclick="copySaved('${escAttr(t.text)}')">📋 نسخ</button>
+      <button class="btn btn-g btn-sm" onclick="openXWith('${escAttr(t.text)}')">فتح X</button>
+      <button class="btn btn-g btn-sm" style="color:#ff6b6b;border-color:#ff444433" onclick="deleteSavedItem(${t.id})">🗑️</button>
+    </div>
+  </div>`).join('')}`;
 }
-function bindScheduledPage(){
-  document.getElementById('btnRefreshSched')?.addEventListener('click', async()=>{ await loadScheduled(); render(); });
-}
-async function delSched(id){
-  if(!confirm('حذف هذه التغريدة؟')) return;
-  await window.api.deleteScheduled(id);
-  await loadScheduled(); render();
-}
-
-// ── صفحة السجل ──────────────────────────────────
-async function renderHistoryPageAsync(){
-  const hist = await window.api.getHistory();
-  if(S.page!=='history') return;
-  document.getElementById('app').innerHTML=`<div class="ptit">سجل التغريدات</div>
-  ${hist.length===0?`<div class="card"><div style="text-align:center;color:#6b7280;padding:20px">لا يوجد سجل بعد</div></div>`:`
-  <div class="card">
-    <table class="sched-table">
-      <tr><th>التغريدة</th><th>تاريخ النشر</th><th>الحالة</th></tr>
-      ${hist.map(t=>`<tr>
-        <td>${escHtml(t.content.substring(0,100))}${t.content.length>100?'...':''}</td>
-        <td style="white-space:nowrap;color:#aaa">${new Date(t.posted_at).toLocaleString('ar-SA')}</td>
-        <td><span class="badge ${t.status==='posted'?'badge-posted':'badge-failed'}">${t.status==='posted'?'✅':'❌'}</span></td>
-      </tr>`).join('')}
-    </table>
-  </div>`}`;
-}
-function bindHistoryPage(){}
+function bindSavedPage(){}
 
 // ── Actions ──────────────────────────────────────
-
-// الترندات — بدون MOCK، رسالة خطأ واضحة عند الفشل
 async function fetchTrends(){
   const btn=document.getElementById('btnFetch');
   btn.disabled=true; btn.textContent='⏳ جاري الجلب...';
   S.trends=[]; S.trendsReal=false; S.trendsError='';
   try {
-    const r = await window.api.fetchTrends({ region: S.region });
-    if(r.success && r.trends.length > 0){
-      S.trends = r.trends;
-      S.trendsReal = true;
-    } else {
-      S.trendsError = r.error || 'فشل جلب الترندات — تحقق من اتصال الإنترنت';
-    }
-  } catch(e){
-    S.trendsError = e.message || 'خطأ غير متوقع';
-  }
+    const r=await window.api.fetchTrends({region:S.region});
+    if(r.success && r.trends.length>0){ S.trends=r.trends; S.trendsReal=true; }
+    else S.trendsError=r.error||'فشل جلب الترندات';
+  } catch(e){ S.trendsError=e.message; }
   btn.disabled=false;
   render();
 }
 
 function toggleTrend(name){
-  const t=S.trends.find(x=>x.name===name);
-  if(!t) return;
+  const t=S.trends.find(x=>x.name===name); if(!t) return;
   const i=S.selTrends.findIndex(x=>x.name===name);
   if(i>=0) S.selTrends.splice(i,1);
   else if(S.selTrends.length<3) S.selTrends.push(t);
@@ -399,12 +406,16 @@ function toggleTrend(name){
 }
 
 async function fetchBs(){
+  const searchInput=document.getElementById('prodSearch');
+  const query=(searchInput?.value||S.prodSearch).trim();
+  if(!query){ alert('اكتب اسم المنتج للبحث'); return; }
+  S.prodSearch=query;
   const btn=document.getElementById('btnBs');
-  btn.disabled=true; btn.textContent='⏳ جاري الجلب...';
-  const r=await window.api.fetchBestsellers(S.bsSrc);
+  btn.disabled=true; btn.textContent='⏳...';
+  const r=await window.api.fetchBestsellers({source:S.bsSrc, query});
   if(r.success) S.products=r.products||[];
-  else { S.products=[]; alert('⚠️ فشل جلب المنتجات: '+(r.error||'خطأ غير معروف')); }
-  btn.disabled=false; btn.textContent='📦 جلب المنتجات';
+  else { S.products=[]; alert('⚠️ '+( r.error||'فشل البحث')); }
+  btn.disabled=false; btn.textContent='🔍 بحث';
   render();
 }
 
@@ -431,23 +442,28 @@ function updCC(n){
   if(btn) btn.disabled=n===0||n>280;
 }
 
-async function postTweet(){
-  if(S.tweet.length>280){ alert(`التغريدة تتجاوز 280 حرفاً`); return; }
-  const btn=document.getElementById('btnPost'), ld=document.getElementById('postLd');
-  btn.disabled=true; if(ld) ld.style.display='block';
-  if(S.schedMode==='now'){
-    const r=await window.api.postTweet({content:S.tweet});
-    if(r.success){ S.postResult={msg:'✅ تم نشر التغريدة بنجاح!', tid:r.tweetId}; await loadScheduled(); render(); }
-    else{ alert('❌ فشل النشر:\n\n'+r.error); btn.disabled=false; if(ld) ld.style.display='none'; }
-  } else {
-    if(!S.schedTime){ alert('حدد موعد النشر'); btn.disabled=false; return; }
-    const schedDate=new Date(S.schedTime);
-    if(schedDate<=new Date()){ alert('يجب أن يكون الموعد في المستقبل'); btn.disabled=false; return; }
-    const r=await window.api.scheduleTweet({content:S.tweet, scheduledAt:schedDate.toISOString()});
-    if(r.success){ S.postResult={msg:'✅ تم جدولة التغريدة!', tid:null, schedAt:schedDate.toISOString()}; await loadScheduled(); render(); }
-    else{ alert('❌ فشل الجدولة: '+r.error); btn.disabled=false; if(ld) ld.style.display='none'; }
-  }
+async function copyTweet(){
+  try {
+    await navigator.clipboard.writeText(S.tweet);
+    saveTweet(S.tweet); // يحفظ تلقائياً عند النسخ أيضاً
+    S.copySuccess=true; render();
+  } catch(e){ alert('فشل النسخ: '+e.message); }
 }
+
+async function copySaved(text){
+  try {
+    await navigator.clipboard.writeText(text);
+    // تأكيد بصري مؤقت
+    const btn=event.target; btn.textContent='✅'; setTimeout(()=>btn.textContent='📋 نسخ',1500);
+  } catch(e){ alert('فشل النسخ'); }
+}
+
+function openX(){ window.open('https://twitter.com/intent/tweet','_blank'); }
+function openXWith(text){
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text),'_blank');
+}
+
+function deleteSavedItem(id){ deleteSaved(id); render(); }
 
 async function logout(){
   if(!confirm('هل تريد قطع الاتصال؟')) return;
@@ -457,8 +473,9 @@ async function logout(){
 
 function goStep(n){ S.step=n; render(); }
 function goPage(p){ S.page=p; render(); }
-function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.postResult=null; render(); }
+function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.copySuccess=false; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\n/g,'\\n'); }
 
 init();
 </script>
