@@ -21,34 +21,47 @@ function getDeviceId() {
 // ── التحقق من الترخيص ────────────────────────────
 async function verifyLicense(code) {
   const deviceId = getDeviceId();
-  try {
-    const response = await new Promise((resolve, reject) => {
-      const body = JSON.stringify({ code, device_id: deviceId });
-      const url = new URL(`${LICENSE_SERVER}/api/verify`);
-      const req = https.request({
-        hostname: url.hostname,
-        path: url.pathname,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      }, (res) => {
-        let data = '';
-        res.on('data', c => data += c);
-        res.on('end', () => resolve(JSON.parse(data)));
-      });
-      req.on('error', reject);
-      req.write(body); req.end();
+  return new Promise((resolve) => {
+    const { net } = require('electron');
+    const body = JSON.stringify({ code, device_id: deviceId });
+    const request = net.request({
+      url: `${LICENSE_SERVER}/api/verify`,
+      method: 'POST',
+      session: require('electron').session.defaultSession,
     });
-    return response;
-  } catch(e) {
-    return { valid: false, error: 'تعذر الاتصال بالسيرفر: ' + e.message };
-  }
+    request.setHeader('Content-Type', 'application/json');
+    request.setHeader('Content-Length', Buffer.byteLength(body).toString());
+
+    let data = '';
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      request.abort();
+      resolve({ valid: false, error: 'انتهت مهلة الاتصال بالسيرفر' });
+    }, 15000);
+
+    request.on('response', (response) => {
+      response.on('data', chunk => { data += chunk.toString(); });
+      response.on('end', () => {
+        if (timedOut) return;
+        clearTimeout(timer);
+        try { resolve(JSON.parse(data)); }
+        catch(e) { resolve({ valid: false, error: 'خطأ في الاستجابة' }); }
+      });
+    });
+    request.on('error', (e) => {
+      if (!timedOut) { clearTimeout(timer); resolve({ valid: false, error: 'تعذر الاتصال: ' + e.message }); }
+    });
+    request.write(body);
+    request.end();
+  });
 }
 
 async function checkStoredLicense() {
   const stored = db.prepare('SELECT * FROM auth WHERE id=2').get();
-  if (!stored || !stored.username) return false; // نستخدم username لتخزين الكود
-  const result = await verifyLicense(stored.username);
-  return result.valid;
+  if (!stored || !stored.username) return false;
+  // تحقق محلي — الكود محفوظ = مفعّل مسبقاً
+  return true;
 }
 
 // ── قاعدة البيانات ────────────────────────────────
