@@ -54,20 +54,19 @@ function getClient() {
 }
 
 // ── جلب Google Trends RSS ─────────────────────────
-// استخدام Google News RSS - أكثر استقراراً من Google Trends
-function fetchGoogleTrends(geo) {
+// سكرابينج ترندات X الحقيقية من trends24.in
+function fetchTrends24(region) {
   return new Promise((resolve) => {
-    const { net } = require('electron');
+    const { net, session } = require('electron');
 
-    // Google News RSS - يعمل بشكل مضمون ومجاني
-    const GEO_PARAMS = {
-      SA: 'hl=ar&gl=SA&ceid=SA:ar',
-      AE: 'hl=ar&gl=AE&ceid=AE:ar',
-      EG: 'hl=ar&gl=EG&ceid=EG:ar',
-      US: 'hl=en-US&gl=US&ceid=US:en',
+    const PATHS = {
+      sa: 'saudi-arabia',
+      ae: 'united-arab-emirates',
+      eg: 'egypt',
+      world: 'worldwide',
     };
-    const params = GEO_PARAMS[geo] || GEO_PARAMS.SA;
-    const url = `https://news.google.com/rss?${params}`;
+    const regionPath = PATHS[region] || PATHS.sa;
+    const url = `https://trends24.in/${regionPath}/`;
 
     const request = net.request({
       url,
@@ -76,8 +75,9 @@ function fetchGoogleTrends(geo) {
     });
 
     request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    request.setHeader('Accept', 'application/rss+xml, text/xml, */*');
-    request.setHeader('Accept-Language', 'ar-SA,ar;q=0.9');
+    request.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+    request.setHeader('Accept-Language', 'ar-SA,ar;q=0.9,en;q=0.8');
+    request.setHeader('Referer', 'https://trends24.in/');
 
     let data = '';
     let timedOut = false;
@@ -86,7 +86,7 @@ function fetchGoogleTrends(geo) {
       timedOut = true;
       request.abort();
       resolve({ success: false, error: 'انتهت مهلة الطلب', trends: [] });
-    }, 10000);
+    }, 12000);
 
     request.on('response', (response) => {
       response.on('data', chunk => { data += chunk.toString(); });
@@ -98,35 +98,27 @@ function fetchGoogleTrends(geo) {
             resolve({ success: false, error: `HTTP ${response.statusCode}`, trends: [] });
             return;
           }
-          // استخراج عناوين الأخبار من RSS
-          const titles = [...data.matchAll(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g)]
-            .slice(1, 11)
-            .map(m => m[1].trim());
 
-          // إذا لم يجد CDATA، جرب بدونه
-          const titles2 = titles.length ? titles :
-            [...data.matchAll(/<title>([^<]+)<\/title>/g)]
-              .slice(1, 11)
-              .map(m => m[1].trim());
+          // استخراج الترندات من روابط twitter search
+          // النمط: <a href="https://twitter.com/search?q=...">النص</a>
+          const matches = [...data.matchAll(/href="https:\/\/twitter\.com\/search\?q=([^"]+)"[^>]*>([^<]+)<\/a>/g)];
 
-          const finalTitles = titles2.filter(t => t.length > 2 && !t.includes('Google'));
-
-          if (finalTitles.length === 0) {
-            resolve({ success: false, error: 'لم يتم العثور على أخبار', trends: [] });
+          if (matches.length === 0) {
+            resolve({ success: false, error: 'لم يتم العثور على ترندات', trends: [] });
             return;
           }
 
-          // تحويل عناوين الأخبار إلى هاشتاقات
-          const trends = finalTitles.map(title => ({
-            name: '#' + title
-              .replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g, '')
-              .trim()
-              .split(/\s+/)
-              .slice(0, 3)
-              .join('_'),
-            tweet_volume: null,
-            title: title, // العنوان الكامل للعرض
-          }));
+          // أخذ أول 15 ترند وإزالة المكررات
+          const seen = new Set();
+          const trends = [];
+          for (const m of matches) {
+            const name = m[2].trim();
+            if (!name || seen.has(name) || trends.length >= 15) continue;
+            seen.add(name);
+            // إضافة # إذا لم يكن موجوداً
+            const tag = name.startsWith('#') ? name : '#' + name.replace(/\s+/g, '_');
+            trends.push({ name: tag, tweet_volume: null });
+          }
 
           resolve({ success: true, trends });
         } catch(e) {
@@ -199,7 +191,7 @@ ipcMain.handle('logout', () => {
   return true;
 });
 
-ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }) => {
+ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, fixedTags }) => {
   const TEMPLATES = {
     hype: [
       `🔥 لا تفوتك هذه الفرصة! {product} بسعر خيالي لن تصدقه\nاطلبه الآن قبل نفاد الكمية 👇\n{url}\n{trends}`,
@@ -221,12 +213,14 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }
   };
   const product   = productDesc || 'هذا المنتج المميز';
   const trendTags = trends.map(t => t.name).join(' ');
+  const fixed     = fixedTags ? '#فيصل_يختار #تخفيضات' : '';
+  const allTags   = [trendTags, fixed].filter(Boolean).join(' ');
   const list      = TEMPLATES[tone] || TEMPLATES.hype;
   const template  = list[Math.floor(Math.random() * list.length)];
   let tweet = template
     .replace(/{product}/g, product)
     .replace(/{url}/g, affiliateUrl)
-    .replace(/{trends}/g, trendTags);
+    .replace(/{trends}/g, allTags);
 
   if (tweet.length > 280) {
     const suffix = `\n${affiliateUrl}\n${trendTags}`;
@@ -274,18 +268,8 @@ ipcMain.handle('get-history', () => {
 
 // ── FIX: ترندات حقيقية من Google Trends ──────────
 ipcMain.handle('fetch-trends', async (_, { region }) => {
-  // تحويل المنطقة إلى كود Google
-  const GEO = { sa: 'SA', ae: 'AE', eg: 'EG', world: 'US' };
-  const geo = GEO[region] || 'SA';
-
-  const result = await fetchGoogleTrends(geo);
-
-  if (result.success && result.trends.length > 0) {
-    return { success: true, trends: result.trends, source: 'google' };
-  }
-
-  // Fallback احتياطي
-  return { success: false, error: result.error, trends: [] };
+  const result = await fetchTrends24(region);
+  return result;
 });
 
 ipcMain.handle('fetch-bestsellers', async (_, source) => {
