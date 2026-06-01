@@ -54,12 +54,20 @@ function getClient() {
 }
 
 // ── جلب Google Trends RSS ─────────────────────────
-// استخدام Electron net module بدل Node https
-// net يرسل الطلب كمتصفح حقيقي مع session كاملة
+// استخدام Google News RSS - أكثر استقراراً من Google Trends
 function fetchGoogleTrends(geo) {
   return new Promise((resolve) => {
     const { net } = require('electron');
-    const url = `https://trends.google.com/trends/trendingsearches/daily/rss?geo=${geo}`;
+
+    // Google News RSS - يعمل بشكل مضمون ومجاني
+    const GEO_PARAMS = {
+      SA: 'hl=ar&gl=SA&ceid=SA:ar',
+      AE: 'hl=ar&gl=AE&ceid=AE:ar',
+      EG: 'hl=ar&gl=EG&ceid=EG:ar',
+      US: 'hl=en-US&gl=US&ceid=US:en',
+    };
+    const params = GEO_PARAMS[geo] || GEO_PARAMS.SA;
+    const url = `https://news.google.com/rss?${params}`;
 
     const request = net.request({
       url,
@@ -68,8 +76,8 @@ function fetchGoogleTrends(geo) {
     });
 
     request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    request.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
-    request.setHeader('Accept-Language', 'ar-SA,ar;q=0.9,en-US;q=0.8,en;q=0.7');
+    request.setHeader('Accept', 'application/rss+xml, text/xml, */*');
+    request.setHeader('Accept-Language', 'ar-SA,ar;q=0.9');
 
     let data = '';
     let timedOut = false;
@@ -90,19 +98,36 @@ function fetchGoogleTrends(geo) {
             resolve({ success: false, error: `HTTP ${response.statusCode}`, trends: [] });
             return;
           }
+          // استخراج عناوين الأخبار من RSS
           const titles = [...data.matchAll(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g)]
-            .slice(1)
+            .slice(1, 11)
             .map(m => m[1].trim());
-          const traffic = [...data.matchAll(/<ht:approx_traffic>([^<]+)<\/ht:approx_traffic>/g)]
-            .map(m => m[1].trim());
-          if (titles.length === 0) {
-            resolve({ success: false, error: 'لم يتم العثور على ترندات في الاستجابة', trends: [] });
+
+          // إذا لم يجد CDATA، جرب بدونه
+          const titles2 = titles.length ? titles :
+            [...data.matchAll(/<title>([^<]+)<\/title>/g)]
+              .slice(1, 11)
+              .map(m => m[1].trim());
+
+          const finalTitles = titles2.filter(t => t.length > 2 && !t.includes('Google'));
+
+          if (finalTitles.length === 0) {
+            resolve({ success: false, error: 'لم يتم العثور على أخبار', trends: [] });
             return;
           }
-          const trends = titles.slice(0, 10).map((name, i) => ({
-            name: '#' + name.replace(/\s+/g, '_'),
-            tweet_volume: traffic[i] ? parseInt(traffic[i].replace(/[^0-9]/g, '')) || null : null,
+
+          // تحويل عناوين الأخبار إلى هاشتاقات
+          const trends = finalTitles.map(title => ({
+            name: '#' + title
+              .replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g, '')
+              .trim()
+              .split(/\s+/)
+              .slice(0, 3)
+              .join('_'),
+            tweet_volume: null,
+            title: title, // العنوان الكامل للعرض
           }));
+
           resolve({ success: true, trends });
         } catch(e) {
           resolve({ success: false, error: e.message, trends: [] });
