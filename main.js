@@ -6,10 +6,12 @@ const Database = require('better-sqlite3');
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const CLIENT_ID     = ''; // ← ضع OAuth 2.0 Client ID هنا
-const CLIENT_SECRET = ''; // ← ضع OAuth 2.0 Client Secret هنا
-const CALLBACK_URL  = 'nashir://auth/callback';
-const SCOPES        = ['tweet.read','tweet.write','users.read','offline.access'];
+const API_KEY      = 'r9IxQhVn7x4K4z5lzza0jT9Fg'; // ← ضع Consumer Key هنا
+const API_SECRET   = 'fTamGEdYi9AGXtRwDPE8Gsf73lUfyDszlpgEXCBnvLqeSRuJcW'; // ← ضع Consumer Secret هنا
+const CLIENT_ID    = 'YmtJWUhrNjF6VDJ1UDBla3JWWnI6MTpjaQ'; // ← ضع OAuth 2.0 Client ID هنا
+const CLIENT_SECRET= 'lqmot8CEQTiHH6bS-aJ3_aMO1EFCTu4zNZkejTQtwAwFGXu_pT'; // ← ضع OAuth 2.0 Client Secret هنا
+const CALLBACK_URL = 'nashir://auth/callback';
+const SCOPES       = ['tweet.read','tweet.write','users.read','offline.access'];
 
 // ── قاعدة البيانات ────────────────────────────────
 const DB_PATH = path.join(app.getPath('userData'), 'nashir.db');
