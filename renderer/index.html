@@ -6,7 +6,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#070b14;color:#e8eaf0;font-family:'Segoe UI',Tahoma,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-/* Header */
 .hdr{background:#0d1421;border-bottom:1px solid #1d9bf033;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .logo{display:flex;align-items:center;gap:10px}
 .logo-ic{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#1d9bf0,#0a4a8a);display:flex;align-items:center;justify-content:center;font-size:20px}
@@ -22,85 +21,87 @@ body{background:#070b14;color:#e8eaf0;font-family:'Segoe UI',Tahoma,sans-serif;h
 .hdr-r{display:flex;align-items:center;gap:8px}
 .ubadge{display:flex;align-items:center;gap:7px;padding:5px 12px;background:#111827;border:1px solid #1d9bf033;border-radius:20px;cursor:pointer}
 .uname{font-size:12px;color:#aaa}
-/* Main */
 .main{flex:1;overflow-y:auto;padding:24px 20px 40px;max-width:860px;margin:0 auto;width:100%}
-/* Connect */
 .cs{display:flex;flex-direction:column;align-items:center;justify-content:center;height:65vh;text-align:center;gap:16px}
 .cs-ic{font-size:72px}
 .cs-t{font-size:26px;font-weight:700;color:#fff}
 .cs-s{font-size:14px;color:#6b7280;max-width:360px;line-height:1.7}
-/* Buttons */
 .btn{width:100%;padding:12px;border:none;border-radius:11px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
 .btn-p{background:linear-gradient(135deg,#1d9bf0,#0d6efd)}
 .btn-p:hover:not(:disabled){transform:translateY(-1px)}
-.btn-pu{background:linear-gradient(135deg,#7c3aed,#1d9bf0)}
 .btn-g{background:#111827;border:1px solid #1a2540;color:#6b7280}
 .btn-big{padding:14px 36px;width:auto;border-radius:14px;font-size:16px;background:linear-gradient(135deg,#1d9bf0,#0d6efd);border:none;color:#fff;cursor:pointer;font-family:inherit;font-weight:700}
+.btn-sm{padding:6px 14px;width:auto;border-radius:8px;font-size:12px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
-/* Card */
+.btn-warn{background:linear-gradient(135deg,#f59e0b,#d97706)}
 .card{background:#111827;border:1px solid #1a2540;border-radius:14px;padding:20px;margin-bottom:16px}
 .ct{font-size:13px;font-weight:600;color:#6b7280;margin-bottom:14px}
-/* Inputs */
 label{display:block;font-size:13px;color:#9aa;margin-bottom:5px;font-weight:500}
 input,textarea{width:100%;padding:10px 13px;background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;color:#e8eaf0;font-size:13px;outline:none;font-family:inherit}
 input:focus,textarea:focus{border-color:#1d9bf0}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .f{margin-bottom:14px}
-/* Tabs */
 .tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
 .tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid #1a2540;color:#6b7280;cursor:pointer;background:transparent;font-family:inherit}
 .tab.active{background:#1d9bf0;border-color:#1d9bf0;color:#fff}
-/* Trend */
 .tg{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
 .tc{padding:12px 14px;border-radius:11px;cursor:pointer;background:#0d1421;border:2px solid #1a2540;transition:all .2s}
+.tc:hover{border-color:#1d9bf033}
 .tc.sel{background:#0c2d4a;border-color:#1d9bf0}
 .tn{font-size:13px;font-weight:700;color:#ccd}
 .tc.sel .tn{color:#1d9bf0}
 .tv{font-size:11px;color:#6b7280;margin-top:2px}
-/* Product */
 .pg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .pc{padding:10px 12px;border-radius:10px;cursor:pointer;background:#0d1421;border:2px solid #1a2540;transition:all .2s}
 .pc:hover{border-color:#1d9bf033}
 .pc.sel{border-color:#1d9bf0;background:#0c2d4a}
 .pn{font-size:13px;font-weight:600;color:#e0e0e0}
 .pm{font-size:11px;color:#6b7280;margin-top:2px}
-/* Tone */
 .tones{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .tone{padding:9px 12px;border-radius:9px;font-size:13px;background:#0d1421;border:2px solid #1a2540;color:#6b7280;cursor:pointer;font-family:inherit;text-align:center}
 .tone.active{background:#1d9bf011;border-color:#1d9bf0;color:#1d9bf0;font-weight:600}
-/* Tweet box */
 .tbox{background:#0a0f1a;border:1px solid #1d9bf033;border-radius:11px;padding:13px;margin-bottom:12px}
 .tbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .tlbl{font-size:12px;color:#1d9bf0;font-weight:600}
 .tcc{font-size:11px;font-weight:700}
-/* Mode */
 .modes{display:flex;gap:9px;margin-bottom:14px}
 .mode{flex:1;padding:11px;border-radius:9px;font-size:13px;background:#0d1421;border:2px solid #1a2540;color:#6b7280;cursor:pointer;font-family:inherit}
 .mode.active{background:#1d9bf011;border-color:#1d9bf0;color:#1d9bf0;font-weight:600}
-/* Preview */
 .prev{background:#0d1421;border:1px solid #1a2540;border-radius:12px;padding:16px;margin-bottom:16px}
 .prev-t{font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
 .prev-m{display:flex;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid #1a2540;font-size:12px;color:#6b7280}
-/* Success */
 .succ{text-align:center;padding:40px 20px}
 .succ-ic{font-size:60px;margin-bottom:14px}
 .succ-t{font-size:20px;color:#00c896;font-weight:700;margin-bottom:6px}
 .succ-id{font-size:11px;color:#6b7280;margin-bottom:24px;font-family:monospace}
 .succ-b{display:flex;gap:10px;justify-content:center}
-/* Tag */
 .tag{display:inline-block;padding:2px 9px;margin:2px 3px;background:#1d9bf022;border:1px solid #1d9bf044;border-radius:10px;font-size:11px;color:#7ab8f5}
-/* Spinner */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid #ffffff33;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-/* Load bar */
 .lbar{width:100%;height:3px;background:#1a2540;border-radius:2px;overflow:hidden;margin-top:8px}
 .lfill{height:100%;background:linear-gradient(90deg,#7c3aed,#1d9bf0);animation:sl 1.4s infinite;width:35%}
 @keyframes sl{0%{transform:translateX(-200%)}100%{transform:translateX(500%)}}
-/* Page title */
 .ptit{font-size:22px;font-weight:700;color:#fff;margin-bottom:4px}
 .psub{font-size:13px;color:#6b7280;margin-bottom:20px}
-/* PIN input */
-.pin-in{padding:14px;font-size:24px;text-align:center;letter-spacing:10px;background:#111827;border:2px solid #1d9bf0;border-radius:12px;color:#fff;outline:none;width:200px}
+/* FIX #2: جدول التغريدات المجدولة */
+.sched-table{width:100%;border-collapse:collapse;font-size:12px}
+.sched-table th{text-align:right;padding:8px 10px;color:#6b7280;border-bottom:1px solid #1a2540;font-weight:600}
+.sched-table td{padding:9px 10px;border-bottom:1px solid #0d1421;vertical-align:top}
+.sched-table tr:hover td{background:#0d1421}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600}
+.badge-pending{background:#1d9bf022;color:#1d9bf0}
+.badge-posted{background:#00c89622;color:#00c896}
+.badge-failed{background:#ff444422;color:#ff6b6b}
+/* FIX #5: تحذير 280 */
+.char-warn{background:#ff44440d;border:1px solid #ff444433;border-radius:9px;padding:10px 13px;font-size:12px;color:#ff8080;margin-bottom:10px}
+.char-ok{background:#00c8960d;border:1px solid #00c89633;border-radius:9px;padding:8px 13px;font-size:12px;color:#00c896}
+/* FIX #3: تحذير ترندات وهمية */
+.mock-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b33;margin-right:6px}
+.real-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:#00c89622;color:#00c896;border:1px solid #00c89633;margin-right:6px}
+/* Nav tabs للصفحات */
+.nav-tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid #1a2540;padding-bottom:0}
+.nav-tab{padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;background:transparent;border-top:none;border-left:none;border-right:none}
+.nav-tab.active{color:#1d9bf0;border-bottom-color:#1d9bf0}
 </style>
 </head>
 <body>
@@ -118,145 +119,180 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 <div class="main" id="app"></div>
 
 <script>
-const S={user:null,waiting:false,step:0,region:'sa',trends:[],selTrends:[],bsSrc:'noon',products:[],afUrl:'',prodDesc:'',tone:'hype',tweet:'',schedMode:'now',schedTime:'',postResult:null};
+const S={
+  user:null, step:0, page:'compose',
+  region:'sa', trends:[], selTrends:[], trendsReal:false,
+  bsSrc:'noon', products:[],
+  afUrl:'', prodDesc:'', tone:'hype',
+  tweet:'', schedMode:'now', schedTime:'',
+  postResult:null,
+  scheduled:[], history:[],
+};
 const REGIONS=[{k:'sa',l:'🇸🇦 السعودية'},{k:'world',l:'🌍 العالم'},{k:'ae',l:'🇦🇪 الإمارات'},{k:'eg',l:'🇪🇬 مصر'}];
 const TONES=[{id:'hype',l:'🔥 إثارة'},{id:'informative',l:'📊 معلوماتي'},{id:'funny',l:'😂 فكاهي'},{id:'urgency',l:'⚡ عاجل'}];
 const STEPS=['الترندات','التغريدة','النشر'];
 const SRCS=[{k:'noon',l:'🛍️ نون'},{k:'amazon',l:'📦 أمازون'},{k:'aliexpress',l:'🌐 علي إكسبريس'}];
-const MOCK={sa:[{name:'#السعودية',tweet_volume:48200},{name:'#الذكاء_الاصطناعي',tweet_volume:31500},{name:'#تخفيضات_الصيف',tweet_volume:22100},{name:'#ريادة_الاعمال',tweet_volume:18700},{name:'#التسوق_اونلاين',tweet_volume:15400},{name:'#تطوير_الذات',tweet_volume:12900}],world:[{name:'#AI',tweet_volume:120000},{name:'#Technology',tweet_volume:95000},{name:'#Shopping',tweet_volume:72000}],ae:[{name:'#الامارات',tweet_volume:38000},{name:'#دبي',tweet_volume:29000},{name:'#تسوق',tweet_volume:21000}],eg:[{name:'#مصر',tweet_volume:55000},{name:'#القاهرة',tweet_volume:41000},{name:'#تخفيضات',tweet_volume:18000}]};
+// FIX #3: ترندات احتياطية أكثر واقعية (تُستخدم فقط عند فشل API)
+const MOCK_FALLBACK={
+  sa:[{name:'#السعودية',tweet_volume:48200},{name:'#رؤية_2030',tweet_volume:31500},{name:'#تخفيضات_الصيف',tweet_volume:22100},{name:'#ريادة_الاعمال',tweet_volume:18700},{name:'#التسوق_اونلاين',tweet_volume:15400},{name:'#تطوير_الذات',tweet_volume:12900}],
+  world:[{name:'#AI',tweet_volume:120000},{name:'#Technology',tweet_volume:95000},{name:'#Shopping',tweet_volume:72000}],
+  ae:[{name:'#الامارات',tweet_volume:38000},{name:'#دبي',tweet_volume:29000},{name:'#تسوق',tweet_volume:21000}],
+  eg:[{name:'#مصر',tweet_volume:55000},{name:'#القاهرة',tweet_volume:41000},{name:'#تخفيضات',tweet_volume:18000}],
+};
 
 async function init(){
-  S.user=await window.api.getAuth();
-  window.api.onAuthSuccess(u=>{S.user=u;S.waiting=false;render();});
-  window.api.onAuthError(e=>{S.waiting=false;alert('خطأ: '+e);render();});
+  S.user = await window.api.getAuth();
+  window.api.onAuthSuccess(u=>{ S.user=u; render(); });
+  window.api.onAuthError(e=>{ alert('خطأ في الربط: '+e); render(); });
+  // FIX #2: استقبال أحداث الجدولة
+  window.api.onScheduledPosted(d=>{ loadScheduled(); });
+  window.api.onScheduledFailed(d=>{ loadScheduled(); });
+  if(S.user) await loadScheduled();
   render();
+}
+
+async function loadScheduled(){
+  S.scheduled = await window.api.getScheduled();
 }
 
 function render(){
   renderHdr();
   const app=document.getElementById('app');
-  if(!S.user){app.innerHTML=renderConnect();bindConnect();return;}
-  if(S.step===0){app.innerHTML=renderS0();bindS0();}
-  else if(S.step===1){app.innerHTML=renderS1();bindS1();}
-  else if(S.step===2){app.innerHTML=renderS2();bindS2();}
+  if(!S.user){ app.innerHTML=renderConnect(); bindConnect(); return; }
+  if(S.page==='compose'){
+    if(S.step===0){ app.innerHTML=renderS0(); bindS0(); }
+    else if(S.step===1){ app.innerHTML=renderS1(); bindS1(); }
+    else if(S.step===2){ app.innerHTML=renderS2(); bindS2(); }
+  } else if(S.page==='scheduled'){
+    app.innerHTML=renderScheduledPage(); bindScheduledPage();
+  } else if(S.page==='history'){
+    app.innerHTML=renderHistoryPage(); bindHistoryPage();
+  }
 }
 
 function renderHdr(){
   const st=document.getElementById('steps');
   const hr=document.getElementById('hdrR');
   if(S.user){
-    st.innerHTML=STEPS.map((n,i)=>`<div class="sp ${i===S.step?'active':i<S.step?'done':''}" onclick="if(${i}<${S.step})goStep(${i})"><span class="sp-n">${i<S.step?'✓':i+1}</span>${n}</div>`).join('');
-    hr.innerHTML=`<div class="ubadge" title="@${S.user.username}"><span class="uname">@${S.user.username}</span></div><button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="logout()">خروج</button>`;
-  } else {st.innerHTML='';hr.innerHTML='';}
+    if(S.page==='compose'){
+      st.innerHTML=STEPS.map((n,i)=>`<div class="sp ${i===S.step?'active':i<S.step?'done':''}" onclick="if(${i}<${S.step})goStep(${i})"><span class="sp-n">${i<S.step?'✓':i+1}</span>${n}</div>`).join('');
+    } else {
+      st.innerHTML='';
+    }
+    hr.innerHTML=`
+      <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('scheduled')" style="${S.page==='scheduled'?'color:#1d9bf0;border-color:#1d9bf0':''}">🕐 المجدولة <span style="background:#1d9bf0;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.scheduled.filter(x=>x.status==='pending').length||''}</span></button>
+      <button class="btn btn-g btn-sm" onclick="goPage('history')" style="${S.page==='history'?'color:#1d9bf0;border-color:#1d9bf0':''}">📋 السجل</button>
+      <div class="ubadge" title="@${S.user.username}"><span class="uname">@${S.user.username}</span></div>
+      <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="logout()">خروج</button>`;
+  } else { st.innerHTML=''; hr.innerHTML=''; }
 }
 
 function renderConnect(){
-  if(S.pinStep) return `<div class="cs">
-    <div class="cs-ic">🔢</div>
-    <div class="cs-t">أدخل الرقم السري</div>
-    <div class="cs-s">أدخل الرقم المكون من 7 أرقام الذي ظهر لك في X بعد الموافقة على الصلاحيات</div>
-    <input class="pin-in" id="pinIn" type="text" placeholder="1234567" maxlength="7" autofocus>
-    <div style="display:flex;gap:10px">
-      <button class="btn-big" id="btnPin">✓ تأكيد</button>
-      <button onclick="S.pinStep=false;render()" style="background:#111827;border:1px solid #1a2540;border-radius:14px;padding:14px 20px;color:#6b7280;cursor:pointer;font-family:inherit">رجوع</button>
-    </div>
-  </div>`;
   return `<div class="cs">
     <div class="cs-ic">✈️</div>
     <div class="cs-t">مرحباً بك في ناشر</div>
-    <div class="cs-s">اربط حسابك على X بنقرة واحدة — سيفتح المتصفح وتحصل على رقم سري تدخله هنا</div>
+    <div class="cs-s">اربط حسابك على X بنقرة واحدة — سيفتح المتصفح لتأكيد الصلاحيات ثم يعود تلقائياً</div>
     <button class="btn-big" id="btnConn">🔗 ربط حساب X</button>
   </div>`;
 }
-
 function bindConnect(){
-  if(S.pinStep){
-    document.getElementById('btnPin')?.addEventListener('click',submitPin);
-    document.getElementById('pinIn')?.addEventListener('keydown',e=>{if(e.key==='Enter')submitPin();});
-  } else {
-    document.getElementById('btnConn')?.addEventListener('click',async()=>{
-      const r=await window.api.startOAuth();
-      if(r.success){S.pinStep=true;render();}
-    });
-  }
+  document.getElementById('btnConn')?.addEventListener('click', async()=>{
+    const r=await window.api.startOAuth();
+    if(!r.success) alert('فشل بدء الربط');
+  });
 }
 
-async function submitPin(){
-  const pin=document.getElementById('pinIn')?.value?.trim();
-  if(!pin){alert('أدخل الرقم السري');return;}
-  const btn=document.getElementById('btnPin');
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  const r=await window.api.confirmPin(pin);
-  if(r.success){S.user={username:r.username,profile_image:r.profile_image||''};S.pinStep=false;render();}
-  else{alert(r.error);btn.disabled=false;btn.innerHTML='✓ تأكيد';}
-}
-
+// ── الخطوة 0: الترندات ──────────────────────────
 function renderS0(){
-  const cards=S.trends.map(t=>`<div class="tc ${S.selTrends.find(s=>s.name===t.name)?'sel':''}" onclick="toggleTrend('${t.name}')">
+  const hasReal = S.trendsReal;
+  const cards = S.trends.map(t=>`<div class="tc ${S.selTrends.find(s=>s.name===t.name)?'sel':''}" onclick="toggleTrend('${t.name.replace(/'/g,"\\'")}')">
     <div style="display:flex;justify-content:space-between"><span class="tn">${t.name}</span>${S.selTrends.find(s=>s.name===t.name)?'<span style="width:16px;height:16px;border-radius:50%;background:#1d9bf0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span>':''}</div>
     <div class="tv">${t.tweet_volume?t.tweet_volume.toLocaleString()+' تغريدة':'ترند حالي'}</div>
   </div>`).join('');
-  const tags=S.selTrends.map(t=>`<span class="tag">${t.name}</span>`).join('');
+  const tags = S.selTrends.map(t=>`<span class="tag">${t.name}</span>`).join('');
   return `<div class="ptit">الترندات الحالية</div>
-  <p class="psub">اختر حتى 3 ترندات لدمجها في تغريدتك</p>
-  <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';render()">${r.l}</button>`).join('')}</div>
-  <button class="btn btn-g" id="btnFetch" style="margin-bottom:14px">🔄 جلب الترندات</button>
-  ${S.trends.length?`<div class="tg">${cards}</div>`:''}
-  ${S.selTrends.length?`<div style="margin-bottom:14px;padding:10px 14px;background:#0d3b5e22;border:1px solid #1d9bf033;border-radius:9px"><span style="font-size:12px;color:#1d9bf0;font-weight:600">المختارة: </span>${tags}</div>`:''}
-  <button class="btn btn-p" id="btnN0" ${!S.selTrends.length?'disabled':''}>التالي: كتابة التغريدة ←</button>`;
-}
-
-function bindS0(){
-  document.getElementById('btnFetch')?.addEventListener('click',fetchTrends);
-  document.getElementById('btnN0')?.addEventListener('click',()=>goStep(1));
-}
-
-function renderS1(){
-  const cc=S.tweet.length;
-  const col=cc>280?'#ff4444':cc>240?'#ff8800':'#00c896';
-  const prods=S.products.map((p,i)=>`<div class="pc ${S.afUrl===p.url&&S.prodDesc===p.name?'sel':''}" onclick="selProd(${i})"><div class="pn">${p.name}</div><div class="pm">${p.brand?p.brand+' • ':''}${p.price}</div></div>`).join('');
-  return `<div class="ptit">إنشاء التغريدة</div>
+  <div class="psub">اختر حتى 3 ترندات لتضمينها في تغريدتك</div>
   <div class="card">
-    <div class="ct">🏆 أفضل المنتجات</div>
-    <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';render()">${s.l}</button>`).join('')}<button class="btn btn-g" id="btnBs" style="width:auto;padding:6px 14px;font-size:12px">جلب</button></div>
-    ${S.products.length?`<div class="pg">${prods}</div>`:''}
-    <div class="g2">
-      <div class="f"><label>رابط الأفلييت *</label><input id="afUrl" type="url" placeholder="https://..." value="${S.afUrl}"></div>
-      <div class="f"><label>وصف المنتج</label><input id="prodDesc" type="text" placeholder="مثال: سماعات بلوتوث" value="${S.prodDesc}"></div>
-    </div>
-    <div class="f"><label>أسلوب التغريدة</label>
-      <div class="tones">${TONES.map(t=>`<button class="tone ${S.tone===t.id?'active':''}" onclick="S.tone='${t.id}';render()">${t.l}</button>`).join('')}</div>
-    </div>
-    <button class="btn btn-pu" id="btnGen" style="margin-top:4px">✨ توليد التغريدة</button>
-    <div id="genLd" style="display:none;margin-top:8px;text-align:center;font-size:12px;color:#9d6fff">✍️ جاري التوليد...<div class="lbar"><div class="lfill"></div></div></div>
+    <div class="ct">🌍 المنطقة</div>
+    <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;render()">${r.l}</button>`).join('')}</div>
+    <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">
+      🔄 جلب الترندات ${hasReal?'<span class="real-badge">حقيقية</span>':'<span class="mock-badge">احتياطية</span>'}
+    </button>
+    ${!hasReal&&S.trends.length?`<div style="font-size:11px;color:#f59e0b;margin-top:8px">⚠️ هذه ترندات احتياطية — لجلب ترندات حقيقية يحتاج حسابك صلاحية Elevated Access في X Developer Portal</div>`:''}
   </div>
-  ${S.tweet?`<div class="tbox">
-    <div class="tbar"><span class="tlbl">📝 التغريدة</span><span class="tcc" style="color:${col}">${cc}/280</span></div>
-    <textarea id="twTxt" rows="5" style="background:transparent;border:none;padding:0;font-size:14px;line-height:1.8;color:#e8eaf0;resize:vertical;width:100%;outline:none;font-family:inherit">${S.tweet}</textarea>
-  </div>`:''}
-  <button class="btn btn-p" id="btnN1" ${!S.tweet||cc>280?'disabled':''}>التالي: نشر أو جدولة ←</button>`;
+  ${S.trends.length?`<div class="tg">${cards}</div>`:'<div style="color:#6b7280;font-size:13px;text-align:center;padding:20px">اضغط "جلب الترندات" للبدء</div>'}
+  ${S.selTrends.length?`<div class="card"><div class="ct">✅ الترندات المختارة</div><div>${tags}</div></div>`:''}
+  <div style="display:flex;gap:10px;margin-top:8px">
+    <button class="btn btn-p" id="btnN0" ${S.selTrends.length===0?'disabled':''}>التالي ← التغريدة</button>
+    <button class="btn btn-g" onclick="S.selTrends=[];S.step=1;render()">تخطي بدون ترندات</button>
+  </div>`;
+}
+function bindS0(){
+  document.getElementById('btnFetch')?.addEventListener('click', fetchTrends);
+  document.getElementById('btnN0')?.addEventListener('click', ()=>{ S.step=1; render(); });
 }
 
+// ── الخطوة 1: بناء التغريدة ──────────────────────
+function renderS1(){
+  const cc = S.tweet.length;
+  const overLimit = cc > 280;
+  return `<div class="ptit">بناء التغريدة</div>
+  <div class="card">
+    <div class="ct">🛍️ المنتجات الأكثر مبيعاً</div>
+    <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';render()">${s.l}</button>`).join('')}</div>
+    <button class="btn btn-g" id="btnBs" style="width:auto;padding:8px 18px;font-size:12px;margin-bottom:12px">📦 جلب المنتجات</button>
+    ${S.products.length?`<div class="pg">${S.products.map((p,i)=>`<div class="pc ${S.afUrl===p.url&&S.prodDesc===p.name?'sel':''}" onclick="selProd(${i})"><div class="pn">${p.name}</div><div class="pm">${p.brand?p.brand+' · ':''}${p.price}</div></div>`).join('')}</div>`:''}
+  </div>
+  <div class="card">
+    <div class="ct">🔗 رابط الأفلييت ووصف المنتج</div>
+    <div class="f"><label>رابط الأفلييت *</label><input id="afUrl" placeholder="https://..." value="${S.afUrl}"></div>
+    <div class="f"><label>وصف المنتج (اختياري)</label><input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${S.prodDesc}"></div>
+  </div>
+  <div class="card">
+    <div class="ct">🎭 أسلوب التغريدة</div>
+    <div class="tones">${TONES.map(t=>`<button class="tone ${S.tone===t.id?'active':''}" onclick="S.tone='${t.id}';render()">${t.l}</button>`).join('')}</div>
+  </div>
+  <button class="btn btn-pu" id="btnGen" style="margin-bottom:12px">✨ توليد التغريدة</button>
+  <div id="genLd" style="display:none;margin-bottom:12px"><div class="lbar"><div class="lfill"></div></div></div>
+  ${S.tweet?`
+    <div class="tbox">
+      <div class="tbar"><span class="tlbl">معاينة التغريدة</span><span class="tcc" style="color:${overLimit?'#ff4444':cc>240?'#ff8800':'#00c896'}">${cc}/280</span></div>
+      <textarea id="tweetEdit" style="border:none;background:transparent;resize:vertical;min-height:80px" oninput="S.tweet=this.value;updCC(this.value.length)">${S.tweet}</textarea>
+    </div>
+    ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً (${cc} حرف) — يرجى اختصارها قبل المتابعة</div>`:`<div class="char-ok">✅ الطول مناسب (${cc}/280 حرف)</div>`}
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-p" id="btnN1" ${overLimit||cc===0?'disabled':''}>التالي ← النشر</button>
+      <button class="btn btn-g" onclick="S.tweet='';render()">إعادة التوليد</button>
+    </div>
+  `:``}`;
+}
 function bindS1(){
-  document.getElementById('btnBs')?.addEventListener('click',fetchBs);
-  document.getElementById('afUrl')?.addEventListener('input',e=>S.afUrl=e.target.value);
-  document.getElementById('prodDesc')?.addEventListener('input',e=>S.prodDesc=e.target.value);
-  document.getElementById('twTxt')?.addEventListener('input',e=>{S.tweet=e.target.value;updCC(e.target.value.length);});
-  document.getElementById('btnGen')?.addEventListener('click',genTweet);
-  document.getElementById('btnN1')?.addEventListener('click',()=>goStep(2));
+  document.getElementById('btnBs')?.addEventListener('click', fetchBs);
+  document.getElementById('btnGen')?.addEventListener('click', genTweet);
+  document.getElementById('btnN1')?.addEventListener('click', ()=>{ S.step=2; render(); });
 }
 
+// ── الخطوة 2: النشر ─────────────────────────────
 function renderS2(){
   if(S.postResult) return `<div class="succ">
     <div class="succ-ic">🎉</div>
     <div class="succ-t">${S.postResult.msg}</div>
-    <div class="succ-id">${S.postResult.tid?'Tweet ID: '+S.postResult.tid:''}</div>
+    <div class="succ-id">${S.postResult.tid?'Tweet ID: '+S.postResult.tid:S.postResult.schedAt?'موعد النشر: '+new Date(S.postResult.schedAt).toLocaleString('ar-SA'):''}</div>
     <div class="succ-b">
       <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="resetW()">+ تغريدة جديدة</button>
+      ${S.postResult.tid?`<button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="window.open('https://twitter.com/i/web/status/${S.postResult.tid}','_blank')">عرض التغريدة ↗</button>`:''}
+      ${!S.postResult.tid?`<button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="goPage('scheduled')">عرض المجدولة ↗</button>`:''}
     </div>
   </div>`;
+
+  const cc = S.tweet.length;
+  const overLimit = cc > 280;
   return `<div class="ptit">نشر التغريدة</div>
-  <div class="prev"><div class="prev-t">${S.tweet}</div><div class="prev-m"><span>💬 0</span><span>🔁 0</span><span>❤️ 0</span></div></div>
+  <div class="prev"><div class="prev-t">${escHtml(S.tweet)}</div>
+    <div class="prev-m"><span style="color:${overLimit?'#ff4444':'#00c896'};font-weight:700">${cc}/280 حرف</span></div>
+  </div>
+  ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً — يرجى الرجوع وتعديلها</div>`:''}
   <div class="card">
     <div class="ct">⏱️ وقت النشر</div>
     <div class="modes">
@@ -265,92 +301,244 @@ function renderS2(){
     </div>
     ${S.schedMode==='sched'?`<div class="f"><label>موعد النشر</label><input id="schedT" type="datetime-local" value="${S.schedTime}"></div>`:''}
   </div>
-  <button class="btn btn-p" id="btnPost" style="font-size:15px;padding:14px" ${S.schedMode==='sched'&&!S.schedTime?'disabled':''}>
-    ${S.schedMode==='now'?'🚀 نشر الآن':'📅 تأكيد الجدولة'}
-  </button>
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-p" id="btnPost" style="font-size:15px;padding:14px" ${overLimit||(S.schedMode==='sched'&&!S.schedTime)?'disabled':''}>
+      ${S.schedMode==='now'?'🚀 نشر الآن':'📅 تأكيد الجدولة'}
+    </button>
+    <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
+  </div>
   <div id="postLd" style="display:none;margin-top:10px;text-align:center;font-size:12px;color:#1d9bf0"><span class="spin"></span> جاري النشر...</div>`;
 }
-
 function bindS2(){
-  document.getElementById('schedT')?.addEventListener('input',e=>S.schedTime=e.target.value);
-  document.getElementById('btnPost')?.addEventListener('click',postTweet);
+  document.getElementById('schedT')?.addEventListener('input', e=>S.schedTime=e.target.value);
+  document.getElementById('btnPost')?.addEventListener('click', postTweet);
 }
 
-// Actions
+// ── FIX #2: صفحة التغريدات المجدولة ────────────
+function renderScheduledPage(){
+  const pending = S.scheduled.filter(x=>x.status==='pending');
+  const done = S.scheduled.filter(x=>x.status!=='pending');
+  return `<div class="ptit">التغريدات المجدولة</div>
+  <div class="psub">التغريدات المنتظرة والمنشورة مسبقاً</div>
+  <button class="btn btn-g" id="btnRefreshSched" style="width:auto;padding:8px 18px;font-size:12px;margin-bottom:16px">🔄 تحديث</button>
+  ${pending.length===0?`<div class="card"><div style="text-align:center;color:#6b7280;padding:20px">لا توجد تغريدات مجدولة حالياً</div></div>`:`
+  <div class="card">
+    <div class="ct">⏳ في الانتظار (${pending.length})</div>
+    <table class="sched-table">
+      <tr><th>التغريدة</th><th>موعد النشر</th><th>الحالة</th><th></th></tr>
+      ${pending.map(t=>`<tr>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.content.substring(0,80))}${t.content.length>80?'...':''}</td>
+        <td style="white-space:nowrap;color:#aaa">${new Date(t.scheduled_at).toLocaleString('ar-SA')}</td>
+        <td><span class="badge badge-pending">انتظار</span></td>
+        <td><button class="btn btn-g btn-sm" onclick="delSched(${t.id})" style="color:#ff6b6b;border-color:#ff444433">حذف</button></td>
+      </tr>`).join('')}
+    </table>
+  </div>`}
+  ${done.length?`<div class="card">
+    <div class="ct">📋 السابقة (${done.length})</div>
+    <table class="sched-table">
+      <tr><th>التغريدة</th><th>الموعد</th><th>الحالة</th></tr>
+      ${done.slice(0,20).map(t=>`<tr>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.content.substring(0,80))}${t.content.length>80?'...':''}</td>
+        <td style="white-space:nowrap;color:#aaa">${new Date(t.scheduled_at).toLocaleString('ar-SA')}</td>
+        <td><span class="badge ${t.status==='posted'?'badge-posted':'badge-failed'}">${t.status==='posted'?'✅ نُشرت':'❌ فشلت'}</span>${t.error?`<div style="color:#ff8080;font-size:10px;margin-top:3px">${escHtml(t.error.substring(0,100))}</div>`:''}</td>
+      </tr>`).join('')}
+    </table>
+  </div>`:''}`;
+}
+function bindScheduledPage(){
+  document.getElementById('btnRefreshSched')?.addEventListener('click', async()=>{
+    await loadScheduled(); render();
+  });
+}
+async function delSched(id){
+  if(!confirm('حذف هذه التغريدة المجدولة؟')) return;
+  await window.api.deleteScheduled(id);
+  await loadScheduled();
+  render();
+}
+
+// ── صفحة السجل ──────────────────────────────────
+async function renderHistoryPage(){
+  const hist = await window.api.getHistory();
+  return `<div class="ptit">سجل التغريدات</div>
+  <div class="psub">آخر 50 تغريدة منشورة</div>
+  ${hist.length===0?`<div class="card"><div style="text-align:center;color:#6b7280;padding:20px">لا يوجد سجل بعد</div></div>`:
+  `<div class="card">
+    <table class="sched-table">
+      <tr><th>التغريدة</th><th>تاريخ النشر</th><th>الحالة</th></tr>
+      ${hist.map(t=>`<tr>
+        <td style="max-width:380px">${escHtml(t.content.substring(0,100))}${t.content.length>100?'...':''}</td>
+        <td style="white-space:nowrap;color:#aaa">${new Date(t.posted_at).toLocaleString('ar-SA')}</td>
+        <td><span class="badge ${t.status==='posted'?'badge-posted':'badge-failed'}">${t.status==='posted'?'✅':'❌'}</span>${t.tweet_id?`<a href="https://twitter.com/i/web/status/${t.tweet_id}" style="color:#1d9bf0;font-size:11px;margin-right:6px" target="_blank">↗</a>`:''}</td>
+      </tr>`).join('')}
+    </table>
+  </div>`}`;
+}
+function bindHistoryPage(){
+  // static render
+}
+
+// ── Actions ──────────────────────────────────────
+// FIX #3: جلب ترندات حقيقية مع fallback
 async function fetchTrends(){
   const btn=document.getElementById('btnFetch');
-  btn.disabled=true;btn.textContent='⏳ جاري الجلب...';
-  await new Promise(r=>setTimeout(r,600));
-  S.trends=MOCK[S.region]||MOCK.sa;
-  btn.disabled=false;render();
+  btn.disabled=true; btn.textContent='⏳ جاري الجلب...';
+  try {
+    const r = await window.api.fetchTrends({ region: S.region });
+    if(r.success && r.trends.length > 0){
+      S.trends = r.trends;
+      S.trendsReal = true;
+    } else {
+      // Fallback للبيانات الاحتياطية
+      S.trends = MOCK_FALLBACK[S.region] || MOCK_FALLBACK.sa;
+      S.trendsReal = false;
+      if(r.error) console.warn('Trends API:', r.error);
+    }
+  } catch(e){
+    S.trends = MOCK_FALLBACK[S.region] || MOCK_FALLBACK.sa;
+    S.trendsReal = false;
+  }
+  btn.disabled=false;
+  render();
 }
 
 function toggleTrend(name){
   const t=S.trends.find(x=>x.name===name);
-  if(!t)return;
+  if(!t) return;
   const i=S.selTrends.findIndex(x=>x.name===name);
-  if(i>=0)S.selTrends.splice(i,1);
-  else if(S.selTrends.length<3)S.selTrends.push(t);
+  if(i>=0) S.selTrends.splice(i,1);
+  else if(S.selTrends.length<3) S.selTrends.push(t);
   render();
 }
 
 async function fetchBs(){
   const btn=document.getElementById('btnBs');
-  btn.disabled=true;btn.textContent='⏳...';
+  btn.disabled=true; btn.textContent='⏳...';
   const r=await window.api.fetchBestsellers(S.bsSrc);
   S.products=r.products||[];
-  btn.disabled=false;render();
+  btn.disabled=false;
+  render();
 }
 
 function selProd(i){
   const p=S.products[i];
-  if(!p)return;
-  S.afUrl=p.url;S.prodDesc=p.name;render();
+  if(!p) return;
+  S.afUrl=p.url; S.prodDesc=p.name;
+  render();
 }
 
 async function genTweet(){
   const af=document.getElementById('afUrl')?.value?.trim();
-  if(!af){alert('أدخل رابط الأفلييت أولاً');return;}
-  S.afUrl=af;S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
+  if(!af){ alert('أدخل رابط الأفلييت أولاً'); return; }
+  S.afUrl=af;
+  S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
   const btn=document.getElementById('btnGen');
   const ld=document.getElementById('genLd');
-  btn.disabled=true;if(ld)ld.style.display='block';
-  const r=await window.api.generateTweet({trends:S.selTrends,affiliateUrl:S.afUrl,productDesc:S.prodDesc,tone:S.tone});
-  if(r.success)S.tweet=r.tweet;
-  btn.disabled=false;if(ld)ld.style.display='none';render();
+  btn.disabled=true; if(ld) ld.style.display='block';
+  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone});
+  if(r.success) S.tweet=r.tweet;
+  btn.disabled=false; if(ld) ld.style.display='none';
+  render();
 }
 
 function updCC(n){
   const el=document.querySelector('.tcc');
   const btn=document.getElementById('btnN1');
-  if(el){el.textContent=n+'/280';el.style.color=n>280?'#ff4444':n>240?'#ff8800':'#00c896';}
-  if(btn)btn.disabled=n===0||n>280;
+  if(el){ el.textContent=n+'/280'; el.style.color=n>280?'#ff4444':n>240?'#ff8800':'#00c896'; }
+  if(btn) btn.disabled=n===0||n>280;
 }
 
+// FIX #1 + #5: النشر مع تحقق كامل
 async function postTweet(){
+  // FIX #5: تحقق نهائي من الطول
+  if(S.tweet.length > 280){
+    alert(`التغريدة تتجاوز 280 حرفاً (${S.tweet.length} حرف) — يرجى تعديلها أولاً`);
+    return;
+  }
   const btn=document.getElementById('btnPost');
   const ld=document.getElementById('postLd');
-  btn.disabled=true;if(ld)ld.style.display='block';
+  btn.disabled=true; if(ld) ld.style.display='block';
+
   if(S.schedMode==='now'){
     const r=await window.api.postTweet({content:S.tweet});
-    if(r.success)S.postResult={msg:'✅ تم نشر التغريدة بنجاح!',tid:r.tweetId};
-    else{alert('فشل النشر: '+r.error);btn.disabled=false;if(ld)ld.style.display='none';return;}
+    if(r.success){
+      S.postResult={msg:'✅ تم نشر التغريدة بنجاح!', tid:r.tweetId};
+      await loadScheduled();
+      render();
+    } else {
+      // FIX #1: عرض رسالة الخطأ الكاملة
+      alert('❌ فشل النشر:\n\n'+r.error+'\n\nتحقق من:\n• صلاحيات التطبيق في X Developer Portal (Read+Write)\n• أن الـ Access Token لم تنته صلاحيته');
+      btn.disabled=false; if(ld) ld.style.display='none';
+    }
   } else {
-    const r=await window.api.scheduleTweet({content:S.tweet,scheduledAt:new Date(S.schedTime).toISOString()});
-    if(r.success)S.postResult={msg:'✅ تم جدولة التغريدة بنجاح!',tid:null};
-    else{alert('فشل الجدولة: '+r.error);btn.disabled=false;if(ld)ld.style.display='none';return;}
+    if(!S.schedTime){ alert('حدد موعد النشر أولاً'); btn.disabled=false; return; }
+    const schedDate = new Date(S.schedTime);
+    if(schedDate <= new Date()){ alert('يجب أن يكون موعد النشر في المستقبل'); btn.disabled=false; return; }
+    const r=await window.api.scheduleTweet({content:S.tweet, scheduledAt:schedDate.toISOString()});
+    if(r.success){
+      S.postResult={msg:'✅ تم جدولة التغريدة بنجاح!', tid:null, schedAt:schedDate.toISOString()};
+      await loadScheduled();
+      render();
+    } else {
+      alert('❌ فشل الجدولة: '+r.error);
+      btn.disabled=false; if(ld) ld.style.display='none';
+    }
   }
-  render();
 }
 
 async function logout(){
-  if(!confirm('هل تريد قطع الاتصال؟'))return;
+  if(!confirm('هل تريد قطع الاتصال؟')) return;
   await window.api.logout();
-  S.user=null;S.step=0;render();
+  S.user=null; S.step=0; S.page='compose'; render();
 }
 
-function goStep(n){S.step=n;render();}
-function resetW(){S.step=0;S.selTrends=[];S.tweet='';S.afUrl='';S.prodDesc='';S.postResult=null;render();}
+function goStep(n){ S.step=n; render(); }
+function goPage(p){ S.page=p; render(); }
+function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.postResult=null; render(); }
+
+// ── Helpers ──────────────────────────────────────
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── صفحة السجل async ─────────────────────────────
+const _origRender = render;
+async function renderHistoryPageAsync(){
+  const hist = await window.api.getHistory();
+  if(S.page!=='history') return;
+  document.getElementById('app').innerHTML = `<div class="ptit">سجل التغريدات</div>
+  <div class="psub">آخر 50 تغريدة منشورة</div>
+  ${hist.length===0?`<div class="card"><div style="text-align:center;color:#6b7280;padding:20px">لا يوجد سجل بعد</div></div>`:
+  `<div class="card">
+    <table class="sched-table">
+      <tr><th>التغريدة</th><th>تاريخ النشر</th><th>الحالة</th></tr>
+      ${hist.map(t=>`<tr>
+        <td style="max-width:380px">${escHtml(t.content.substring(0,100))}${t.content.length>100?'...':''}</td>
+        <td style="white-space:nowrap;color:#aaa">${new Date(t.posted_at).toLocaleString('ar-SA')}</td>
+        <td><span class="badge ${t.status==='posted'?'badge-posted':'badge-failed'}">${t.status==='posted'?'✅':'❌'}</span>${t.tweet_id?`<a href="https://twitter.com/i/web/status/${t.tweet_id}" style="color:#1d9bf0;font-size:11px;margin-right:6px" onclick="event.preventDefault();require('electron').shell.openExternal('https://twitter.com/i/web/status/${t.tweet_id}')">↗</a>`:''}</td>
+      </tr>`).join('')}
+    </table>
+  </div>`}`;
+}
+
+// تعديل render لصفحة السجل
+window._origRender = render;
+window.render = function(){
+  renderHdr();
+  const app=document.getElementById('app');
+  if(!S.user){ app.innerHTML=renderConnect(); bindConnect(); return; }
+  if(S.page==='compose'){
+    if(S.step===0){ app.innerHTML=renderS0(); bindS0(); }
+    else if(S.step===1){ app.innerHTML=renderS1(); bindS1(); }
+    else if(S.step===2){ app.innerHTML=renderS2(); bindS2(); }
+  } else if(S.page==='scheduled'){
+    app.innerHTML=renderScheduledPage(); bindScheduledPage();
+  } else if(S.page==='history'){
+    app.innerHTML='<div style="text-align:center;padding:40px;color:#6b7280"><span class="spin"></span> تحميل...</div>';
+    renderHistoryPageAsync();
+  }
+};
 
 init();
 </script>
