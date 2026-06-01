@@ -1,17 +1,14 @@
 const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
-const https = require('https');
 const { TwitterApi } = require('twitter-api-v2');
 const Database = require('better-sqlite3');
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = 'r9IxQhVn7x4K4z5lzza0jT9Fg'; // ← ضع Consumer Key هنا
-const API_SECRET   = 'fTamGEdYi9AGXtRwDPE8Gsf73lUfyDszlpgEXCBnvLqeSRuJcW'; // ← ضع Consumer Secret هنا
-const CLIENT_ID    = 'YmtJWUhrNjF6VDJ1UDBla3JWWnI6MTpjaQ'; // ← ضع OAuth 2.0 Client ID هنا
-const CLIENT_SECRET= 'lqmot8CEQTiHH6bS-aJ3_aMO1EFCTu4zNZkejTQtwAwFGXu_pT'; // ← ضع OAuth 2.0 Client Secret هنا
-const CALLBACK_URL = 'nashir://auth/callback';
-const SCOPES       = ['tweet.read','tweet.write','users.read','offline.access'];
+const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
+const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
+const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
+const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 
 // ── قاعدة البيانات ────────────────────────────────
 const DB_PATH = path.join(app.getPath('userData'), 'nashir.db');
@@ -23,8 +20,6 @@ function initDB() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS auth (
       id INTEGER PRIMARY KEY,
-      access_token TEXT,
-      refresh_token TEXT,
       username TEXT,
       name TEXT,
       profile_image TEXT
@@ -47,51 +42,14 @@ function initDB() {
   `);
 }
 
-// ── النشر المباشر عبر X API v2 ───────────────────
-// الحل الصحيح: OAuth2 User Access Token يُستخدم كـ Bearer في Authorization header
-// twitter-api-v2 تُعامله كـ App Bearer (app-only) عند تمريره كـ string
-// لذا نستدعي X API مباشرة بـ Node https
-function postToXApi(accessToken, text) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ text });
-    const options = {
-      hostname: 'api.twitter.com',
-      path: '/2/tweets',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-        'User-Agent': 'nashir-app/1.0',
-      },
-    };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ success: true, data: parsed });
-          } else {
-            resolve({ success: false, status: res.statusCode, data: parsed });
-          }
-        } catch(e) {
-          resolve({ success: false, status: res.statusCode, raw: data });
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+// ── بناء Twitter client بـ OAuth 1.0a ─────────────
+function getClient() {
+  return new TwitterApi({
+    appKey: API_KEY,
+    appSecret: API_SECRET,
+    accessToken: ACCESS_TOKEN,
+    accessSecret: ACCESS_SECRET,
   });
-}
-
-// تجديد الـ access token
-async function refreshAccessToken(refreshToken) {
-  const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-  const result = await client.refreshOAuth2Token(refreshToken);
-  return result;
 }
 
 // ── النوافذ ───────────────────────────────────────
@@ -113,56 +71,49 @@ function createMainWindow() {
   mainWindow.setMenuBarVisibility(false);
 }
 
-// ── OAuth 2.0 PKCE ────────────────────────────────
-let oauthCodeVerifier = null;
-let oauthState = null;
-
-async function startOAuth() {
-  const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-  const { url, codeVerifier, state } = client.generateOAuth2AuthLink(CALLBACK_URL, { scope: SCOPES });
-  oauthCodeVerifier = codeVerifier;
-  oauthState = state;
-  shell.openExternal(url);
-  return { success: true };
-}
-
-async function handleCallback(callbackUrl) {
+// ── IPC Handlers ──────────────────────────────────
+ipcMain.handle('get-auth', async () => {
+  // OAuth 1.0a: المفاتيح ثابتة، نجلب بيانات المستخدم مباشرة
+  const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
+  if (row) return row;
+  // إذا ما في بيانات محفوظة، نجلبها من API
   try {
-    const parsed = new URL(callbackUrl);
-    const code  = parsed.searchParams.get('code');
-    const state = parsed.searchParams.get('state');
-    if (!code || state !== oauthState) throw new Error('رابط غير صحيح');
-
-    const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-    const { client: loggedClient, accessToken, refreshToken } =
-      await client.loginWithOAuth2({ code, codeVerifier: oauthCodeVerifier, redirectUri: CALLBACK_URL });
-
-    const me = await loggedClient.v2.me({ 'user.fields': ['profile_image_url','name'] });
-
-    db.prepare(`INSERT OR REPLACE INTO auth (id, access_token, refresh_token, username, name, profile_image)
-      VALUES (1, ?, ?, ?, ?, ?)`).run(
-      accessToken,
-      refreshToken || '',
+    const client = getClient();
+    const me = await client.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
+    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image)
+      VALUES (1, ?, ?, ?)`).run(
       me.data.username,
       me.data.name,
       me.data.profile_image_url || ''
     );
+    return db.prepare('SELECT * FROM auth WHERE id=1').get();
+  } catch(e) {
+    console.error('[get-auth]', e.message);
+    return null;
+  }
+});
 
+// OAuth 1.0a: لا حاجة لـ OAuth flow — المفاتيح ثابتة في الكود
+ipcMain.handle('start-oauth', async () => {
+  try {
+    const client = getClient();
+    const me = await client.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
+    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image)
+      VALUES (1, ?, ?, ?)`).run(
+      me.data.username,
+      me.data.name,
+      me.data.profile_image_url || ''
+    );
     mainWindow?.webContents.send('auth-success', {
       username: me.data.username,
       profile_image: me.data.profile_image_url || '',
     });
+    return { success: true };
   } catch(e) {
     mainWindow?.webContents.send('auth-error', e.message);
+    return { success: false, error: e.message };
   }
-}
-
-// ── IPC Handlers ──────────────────────────────────
-ipcMain.handle('get-auth', () => {
-  return db.prepare('SELECT * FROM auth WHERE id=1').get() || null;
 });
-
-ipcMain.handle('start-oauth', () => startOAuth());
 
 ipcMain.handle('logout', () => {
   db.prepare('DELETE FROM auth WHERE id=1').run();
@@ -198,7 +149,6 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }
     .replace(/{url}/g, affiliateUrl)
     .replace(/{trends}/g, trendTags);
 
-  // اقتطاع تلقائي إذا تجاوز 280 حرفاً
   if (tweet.length > 280) {
     const suffix = `\n${affiliateUrl}\n${trendTags}`;
     const maxText = 280 - suffix.length - 4;
@@ -210,53 +160,26 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }
   return { success: true, tweet, charCount: tweet.length };
 });
 
-// ── النشر — الإصلاح الجذري ───────────────────────
+// ── النشر بـ OAuth 1.0a ───────────────────────────
 ipcMain.handle('post-tweet', async (_, { content }) => {
-  const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
-  if (!row) return { success: false, error: 'غير مسجل الدخول — يرجى ربط الحساب أولاً' };
   if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length})` };
-
-  // المحاولة الأولى بالـ access token الحالي
-  let result = await postToXApi(row.access_token, content);
-
-  // إذا كان 401 وعندنا refresh token → نجدد ثم نعيد المحاولة
-  if (!result.success && result.status === 401 && row.refresh_token) {
-    console.log('[post-tweet] 401 received, attempting token refresh...');
-    try {
-      const refreshed = await refreshAccessToken(row.refresh_token);
-      db.prepare('UPDATE auth SET access_token=?, refresh_token=? WHERE id=1').run(
-        refreshed.accessToken,
-        refreshed.refreshToken || row.refresh_token
-      );
-      result = await postToXApi(refreshed.accessToken, content);
-    } catch(refreshErr) {
-      return {
-        success: false,
-        error: `انتهت صلاحية الجلسة — يرجى إعادة ربط الحساب.\n(${refreshErr.message})`,
-      };
-    }
-  }
-
-  if (result.success) {
-    const tweetId = result.data?.data?.id;
+  try {
+    const client = getClient();
+    const result = await client.v2.tweet(content);
+    const tweetId = result.data?.id;
     db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
       content, tweetId || '', 'posted'
     );
     return { success: true, tweetId };
+  } catch(e) {
+    const detail = e.data?.detail || e.data?.title || e.message;
+    const hint = e.code === 403
+      ? '\n\n✋ تأكد أن App Permissions = Read+Write في X Developer Portal'
+      : e.code === 429
+      ? '\n\n⏰ تجاوزت حد الطلبات — انتظر قليلاً'
+      : '';
+    return { success: false, error: `${detail}${hint}` };
   }
-
-  // بناء رسالة خطأ مفهومة
-  const errData = result.data || {};
-  const detail  = errData.detail || errData.title || JSON.stringify(errData);
-  const hint = result.status === 401
-    ? '\n\n✋ تأكد من:\n• صلاحية التطبيق: Read+Write في X Developer Portal\n• إعادة ربط الحساب بعد تغيير الصلاحيات'
-    : result.status === 403
-    ? '\n\n✋ خطأ 403: التطبيق لا يملك صلاحية الكتابة\nاذهب إلى X Developer Portal وغيّر App Permissions إلى Read+Write ثم أعد الربط'
-    : result.status === 429
-    ? '\n\n⏰ تم تجاوز حد الطلبات — انتظر قليلاً ثم أعد المحاولة'
-    : '';
-
-  return { success: false, error: `خطأ ${result.status}: ${detail}${hint}` };
 });
 
 ipcMain.handle('schedule-tweet', (_, { content, scheduledAt }) => {
@@ -278,31 +201,22 @@ ipcMain.handle('get-history', () => {
   return db.prepare('SELECT * FROM tweet_history ORDER BY posted_at DESC LIMIT 50').all();
 });
 
-// ── ترندات حقيقية ─────────────────────────────────
 ipcMain.handle('fetch-trends', async (_, { region }) => {
-  const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
-  if (!row) return { success: false, error: 'غير مسجل الدخول', trends: [] };
-
   const WOEID = { sa: 349204, ae: 349217, eg: 23424802, world: 1 };
   const woeid = WOEID[region] || WOEID.sa;
-
   try {
-    const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-    // نستخدم الـ access token مع v1 trends
-    const userClient = new TwitterApi(row.access_token);
-    const trends = await userClient.v1.trendsByPlace(woeid);
+    const client = getClient();
+    const trends = await client.v1.trendsByPlace(woeid);
     const list = trends[0]?.trends?.slice(0, 10).map(t => ({
       name: t.name,
       tweet_volume: t.tweet_volume || null,
     })) || [];
     return { success: true, trends: list };
   } catch(e) {
-    console.error('[fetch-trends]', e.message);
     return { success: false, error: e.message, trends: [] };
   }
 });
 
-// ── منتجات (احتياطي) ──────────────────────────────
 ipcMain.handle('fetch-bestsellers', async (_, source) => {
   const mocks = {
     amazon: [
@@ -328,23 +242,6 @@ ipcMain.handle('fetch-bestsellers', async (_, source) => {
 });
 
 // ── App Events ────────────────────────────────────
-if (process.defaultApp) {
-  if (process.argv.length >= 2) app.setAsDefaultProtocolClient('nashir', process.execPath, [path.resolve(process.argv[1])]);
-} else {
-  app.setAsDefaultProtocolClient('nashir');
-}
-
-app.on('second-instance', (event, commandLine) => {
-  const url = commandLine.find(arg => arg.startsWith('nashir://'));
-  if (url) handleCallback(url);
-  if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
-});
-
-app.on('open-url', (event, url) => {
-  event.preventDefault();
-  handleCallback(url);
-});
-
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) { app.quit(); }
 
@@ -361,7 +258,6 @@ app.whenReady().then(() => {
   initDB();
   createMainWindow();
 
-  // Cron: نشر التغريدات المجدولة كل دقيقة
   cron.schedule('* * * * *', async () => {
     const now = new Date().toISOString();
     const pending = db.prepare(
@@ -369,36 +265,17 @@ app.whenReady().then(() => {
     ).all(now);
 
     for (const t of pending) {
-      const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
-      if (!row) continue;
-
-      let result = await postToXApi(row.access_token, t.content);
-
-      if (!result.success && result.status === 401 && row.refresh_token) {
-        try {
-          const refreshed = await refreshAccessToken(row.refresh_token);
-          db.prepare('UPDATE auth SET access_token=?, refresh_token=? WHERE id=1').run(
-            refreshed.accessToken, refreshed.refreshToken || row.refresh_token
-          );
-          result = await postToXApi(refreshed.accessToken, t.content);
-        } catch(e) {
-          db.prepare('UPDATE scheduled_tweets SET status="failed", error=? WHERE id=?').run(
-            'انتهت الجلسة: ' + e.message, t.id
-          );
-          mainWindow?.webContents.send('scheduled-failed', { id: t.id });
-          continue;
-        }
-      }
-
-      if (result.success) {
-        const tweetId = result.data?.data?.id;
+      try {
+        const client = getClient();
+        const result = await client.v2.tweet(t.content);
+        const tweetId = result.data?.id;
         db.prepare('UPDATE scheduled_tweets SET status="posted", tweet_id=? WHERE id=?').run(tweetId, t.id);
         db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
           t.content, tweetId || '', 'posted'
         );
         mainWindow?.webContents.send('scheduled-posted', { id: t.id, tweetId });
-      } else {
-        const errMsg = result.data?.detail || JSON.stringify(result.data || {});
+      } catch(e) {
+        const errMsg = e.data?.detail || e.message;
         db.prepare('UPDATE scheduled_tweets SET status="failed", error=? WHERE id=?').run(errMsg, t.id);
         mainWindow?.webContents.send('scheduled-failed', { id: t.id, error: errMsg });
       }
