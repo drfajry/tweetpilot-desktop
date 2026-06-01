@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
+const https = require('https');
 const { TwitterApi } = require('twitter-api-v2');
 const Database = require('better-sqlite3');
 const cron = require('node-cron');
@@ -52,6 +53,46 @@ function getClient() {
   });
 }
 
+// ── جلب Google Trends RSS ─────────────────────────
+function fetchGoogleTrends(geo) {
+  return new Promise((resolve) => {
+    const url = `https://trends.google.com/trends/trendingsearches/daily/rss?geo=${geo}`;
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, text/xml, */*',
+        'Accept-Language': 'ar,en;q=0.9',
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          // استخراج الترندات من RSS
+          const titles = [...data.matchAll(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g)]
+            .slice(1) // تخطي عنوان الفيد
+            .map(m => m[1].trim());
+
+          // استخراج حجم البحث
+          const traffic = [...data.matchAll(/<ht:approx_traffic>([^<]+)<\/ht:approx_traffic>/g)]
+            .map(m => m[1].trim());
+
+          const trends = titles.slice(0, 10).map((name, i) => ({
+            name: '#' + name.replace(/\s+/g, '_'),
+            tweet_volume: traffic[i] ? parseInt(traffic[i].replace(/[^0-9]/g, '')) || null : null,
+          }));
+
+          resolve({ success: true, trends });
+        } catch(e) {
+          resolve({ success: false, error: e.message, trends: [] });
+        }
+      });
+    });
+    req.on('error', e => resolve({ success: false, error: e.message, trends: [] }));
+    req.setTimeout(8000, () => { req.destroy(); resolve({ success: false, error: 'timeout', trends: [] }); });
+  });
+}
+
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
 
@@ -73,37 +114,25 @@ function createMainWindow() {
 
 // ── IPC Handlers ──────────────────────────────────
 ipcMain.handle('get-auth', async () => {
-  // OAuth 1.0a: المفاتيح ثابتة، نجلب بيانات المستخدم مباشرة
   const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
   if (row) return row;
-  // إذا ما في بيانات محفوظة، نجلبها من API
   try {
     const client = getClient();
     const me = await client.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
     db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image)
-      VALUES (1, ?, ?, ?)`).run(
-      me.data.username,
-      me.data.name,
-      me.data.profile_image_url || ''
-    );
+      VALUES (1, ?, ?, ?)`).run(me.data.username, me.data.name, me.data.profile_image_url || '');
     return db.prepare('SELECT * FROM auth WHERE id=1').get();
   } catch(e) {
-    console.error('[get-auth]', e.message);
     return null;
   }
 });
 
-// OAuth 1.0a: لا حاجة لـ OAuth flow — المفاتيح ثابتة في الكود
 ipcMain.handle('start-oauth', async () => {
   try {
     const client = getClient();
     const me = await client.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
     db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image)
-      VALUES (1, ?, ?, ?)`).run(
-      me.data.username,
-      me.data.name,
-      me.data.profile_image_url || ''
-    );
+      VALUES (1, ?, ?, ?)`).run(me.data.username, me.data.name, me.data.profile_image_url || '');
     mainWindow?.webContents.send('auth-success', {
       username: me.data.username,
       profile_image: me.data.profile_image_url || '',
@@ -160,25 +189,17 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone }
   return { success: true, tweet, charCount: tweet.length };
 });
 
-// ── النشر بـ OAuth 1.0a ───────────────────────────
 ipcMain.handle('post-tweet', async (_, { content }) => {
   if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length})` };
   try {
     const client = getClient();
     const result = await client.v2.tweet(content);
     const tweetId = result.data?.id;
-    db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
-      content, tweetId || '', 'posted'
-    );
+    db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(content, tweetId || '', 'posted');
     return { success: true, tweetId };
   } catch(e) {
     const detail = e.data?.detail || e.data?.title || e.message;
-    const hint = e.code === 403
-      ? '\n\n✋ تأكد أن App Permissions = Read+Write في X Developer Portal'
-      : e.code === 429
-      ? '\n\n⏰ تجاوزت حد الطلبات — انتظر قليلاً'
-      : '';
-    return { success: false, error: `${detail}${hint}` };
+    return { success: false, error: detail };
   }
 });
 
@@ -201,20 +222,20 @@ ipcMain.handle('get-history', () => {
   return db.prepare('SELECT * FROM tweet_history ORDER BY posted_at DESC LIMIT 50').all();
 });
 
+// ── FIX: ترندات حقيقية من Google Trends ──────────
 ipcMain.handle('fetch-trends', async (_, { region }) => {
-  const WOEID = { sa: 349204, ae: 349217, eg: 23424802, world: 1 };
-  const woeid = WOEID[region] || WOEID.sa;
-  try {
-    const client = getClient();
-    const trends = await client.v1.trendsByPlace(woeid);
-    const list = trends[0]?.trends?.slice(0, 10).map(t => ({
-      name: t.name,
-      tweet_volume: t.tweet_volume || null,
-    })) || [];
-    return { success: true, trends: list };
-  } catch(e) {
-    return { success: false, error: e.message, trends: [] };
+  // تحويل المنطقة إلى كود Google
+  const GEO = { sa: 'SA', ae: 'AE', eg: 'EG', world: 'US' };
+  const geo = GEO[region] || 'SA';
+
+  const result = await fetchGoogleTrends(geo);
+
+  if (result.success && result.trends.length > 0) {
+    return { success: true, trends: result.trends, source: 'google' };
   }
+
+  // Fallback احتياطي
+  return { success: false, error: result.error, trends: [] };
 });
 
 ipcMain.handle('fetch-bestsellers', async (_, source) => {
@@ -270,9 +291,7 @@ app.whenReady().then(() => {
         const result = await client.v2.tweet(t.content);
         const tweetId = result.data?.id;
         db.prepare('UPDATE scheduled_tweets SET status="posted", tweet_id=? WHERE id=?').run(tweetId, t.id);
-        db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(
-          t.content, tweetId || '', 'posted'
-        );
+        db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(t.content, tweetId || '', 'posted');
         mainWindow?.webContents.send('scheduled-posted', { id: t.id, tweetId });
       } catch(e) {
         const errMsg = e.data?.detail || e.message;
