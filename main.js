@@ -54,42 +54,67 @@ function getClient() {
 }
 
 // ── جلب Google Trends RSS ─────────────────────────
+// استخدام Electron net module بدل Node https
+// net يرسل الطلب كمتصفح حقيقي مع session كاملة
 function fetchGoogleTrends(geo) {
   return new Promise((resolve) => {
+    const { net } = require('electron');
     const url = `https://trends.google.com/trends/trendingsearches/daily/rss?geo=${geo}`;
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/rss+xml, text/xml, */*',
-        'Accept-Language': 'ar,en;q=0.9',
-      }
-    }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          // استخراج الترندات من RSS
-          const titles = [...data.matchAll(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g)]
-            .slice(1) // تخطي عنوان الفيد
-            .map(m => m[1].trim());
 
-          // استخراج حجم البحث
+    const request = net.request({
+      url,
+      method: 'GET',
+      session: require('electron').session.defaultSession,
+    });
+
+    request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    request.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+    request.setHeader('Accept-Language', 'ar-SA,ar;q=0.9,en-US;q=0.8,en;q=0.7');
+
+    let data = '';
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      request.abort();
+      resolve({ success: false, error: 'انتهت مهلة الطلب', trends: [] });
+    }, 10000);
+
+    request.on('response', (response) => {
+      response.on('data', chunk => { data += chunk.toString(); });
+      response.on('end', () => {
+        if (timedOut) return;
+        clearTimeout(timer);
+        try {
+          if (response.statusCode !== 200) {
+            resolve({ success: false, error: `HTTP ${response.statusCode}`, trends: [] });
+            return;
+          }
+          const titles = [...data.matchAll(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g)]
+            .slice(1)
+            .map(m => m[1].trim());
           const traffic = [...data.matchAll(/<ht:approx_traffic>([^<]+)<\/ht:approx_traffic>/g)]
             .map(m => m[1].trim());
-
+          if (titles.length === 0) {
+            resolve({ success: false, error: 'لم يتم العثور على ترندات في الاستجابة', trends: [] });
+            return;
+          }
           const trends = titles.slice(0, 10).map((name, i) => ({
             name: '#' + name.replace(/\s+/g, '_'),
             tweet_volume: traffic[i] ? parseInt(traffic[i].replace(/[^0-9]/g, '')) || null : null,
           }));
-
           resolve({ success: true, trends });
         } catch(e) {
           resolve({ success: false, error: e.message, trends: [] });
         }
       });
     });
-    req.on('error', e => resolve({ success: false, error: e.message, trends: [] }));
-    req.setTimeout(8000, () => { req.destroy(); resolve({ success: false, error: 'timeout', trends: [] }); });
+
+    request.on('error', (e) => {
+      if (!timedOut) { clearTimeout(timer); resolve({ success: false, error: e.message, trends: [] }); }
+    });
+
+    request.end();
   });
 }
 
