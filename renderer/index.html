@@ -195,7 +195,7 @@ function renderS0(){
       <span class="tn">${t.name}</span>
       ${S.selTrends.find(s=>s.name===t.name)?'<span style="width:16px;height:16px;border-radius:50%;background:#1d9bf0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span>':''}
     </div>
-    <div class="tv">${t.tweet_volume?t.tweet_volume.toLocaleString()+' بحث':'ترند حالي'}</div>
+    <div class="tv">${t.title||( t.tweet_volume?t.tweet_volume.toLocaleString()+' بحث':'خبر حالي')}</div>
   </div>`).join('');
   const tags = S.selTrends.map(t=>`<span class="tag">${t.name}</span>`).join('');
   return `<div class="ptit">الترندات الحالية</div>
