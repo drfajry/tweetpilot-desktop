@@ -185,18 +185,21 @@ function fetchTrends24(region) {
   });
 }
 
-// سكرابينج ترندات YouTube من youtube.trends24.in
+// سكرابينج ترندات YouTube من youtube.trends24.in/saudi-arabia
 function fetchYoutubeTrends(region) {
   return new Promise((resolve) => {
     const { net } = require('electron');
-    const PATHS = { sa: 'SA', ae: 'AE', eg: 'EG', world: 'US' };
-    const geo = PATHS[region] || 'SA';
-    const url = `https://youtube.trends24.in/?geo=${geo}`;
+    const PATHS = { sa: 'saudi-arabia', ae: 'united-arab-emirates', eg: 'egypt', world: '' };
+    const regionPath = PATHS[region] || 'saudi-arabia';
+    const url = `https://youtube.trends24.in/${regionPath}`;
+
     const request = net.request({ url, method: 'GET', session: require('electron').session.defaultSession });
     request.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36');
     request.setHeader('Accept', 'text/html,application/xhtml+xml');
+
     let data = '', timedOut = false;
     const timer = setTimeout(() => { timedOut = true; request.abort(); resolve({ success: false, error: 'انتهت مهلة الطلب', trends: [] }); }, 12000);
+
     request.on('response', (response) => {
       response.on('data', chunk => { data += chunk.toString(); });
       response.on('end', () => {
@@ -204,20 +207,32 @@ function fetchYoutubeTrends(region) {
         clearTimeout(timer);
         try {
           if (response.statusCode !== 200) { resolve({ success: false, error: `HTTP ${response.statusCode}`, trends: [] }); return; }
+
           // استخراج عناوين الفيديوهات من روابط يوتيوب
-          const matches = [...data.matchAll(/href="https:\/\/www\.youtube\.com\/watch[^"]*"[^>]*title="([^"]{5,80})"/g)];
-          const titles = [...data.matchAll(/class="[^"]*title[^"]*"[^>]*>([^<]{5,80})<\//gi)]
-            .map(m => m[1].trim());
-          const all = [...new Set([
-            ...matches.map(m => m[1].trim()),
-            ...titles
-          ])].filter(t => t.length > 4).slice(0, 12);
-          if (all.length === 0) { resolve({ success: false, error: 'لم يتم العثور على ترندات', trends: [] }); return; }
-          const trends = all.map(t => ({
-            name: '#' + t.replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g, '').trim().split(/\s+/).slice(0, 3).join('_'),
-            tweet_volume: null,
-            title: t,
-          }));
+          const videoMatches = [...data.matchAll(/href="https:\/\/youtube\.com\/watch\?v=[^"]+">\s*([^<]{3,80})<\/a>/g)];
+          // استخراج من alt النصوص والعناوين
+          const altMatches = [...data.matchAll(/alt="([^"]{5,80})"/g)];
+          const titleMatches = [...data.matchAll(/>([\u0600-\u06FF][^<]{3,60})</g)];
+
+          const seen = new Set();
+          const trends = [];
+
+          const addTrend = (title) => {
+            title = title.trim().replace(/\s+/g, ' ');
+            if (!title || seen.has(title) || trends.length >= 12 || title.length < 4) return;
+            seen.add(title);
+            trends.push({
+              name: '#' + title.replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g, '').trim().split(/\s+/).slice(0,4).join('_'),
+              title,
+              tweet_volume: null,
+            });
+          };
+
+          videoMatches.forEach(m => addTrend(m[1]));
+          altMatches.forEach(m => addTrend(m[1]));
+          if (trends.length < 5) titleMatches.forEach(m => addTrend(m[1]));
+
+          if (trends.length === 0) { resolve({ success: false, error: 'لم يتم العثور على ترندات', trends: [] }); return; }
           resolve({ success: true, trends });
         } catch(e) { resolve({ success: false, error: e.message, trends: [] }); }
       });
