@@ -254,6 +254,16 @@ ipcMain.handle('check-update', async () => {
 
 ipcMain.handle('get-version', () => ({ version: APP_VERSION }));
 
+ipcMain.handle('open-external', (_, url) => {
+  shell.openExternal(url);
+});
+
+ipcMain.handle('copy-to-clipboard', (_, text) => {
+  const { clipboard } = require('electron');
+  clipboard.writeText(text);
+  return true;
+});
+
 ipcMain.handle('open-releases', () => {
   shell.openExternal('https://github.com/drfajry/tweetpilot-desktop/releases/latest');
 });
