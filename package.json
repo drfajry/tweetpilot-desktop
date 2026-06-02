@@ -1,6 +1,6 @@
 {
   "name": "nashir",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ناشر - النشر الذكي على منصات التواصل",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,8 @@
   "dependencies": {
     "twitter-api-v2": "^1.17.0",
     "better-sqlite3": "^9.4.3",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "puppeteer-core": "^21.0.0"
   },
   "devDependencies": {
     "electron": "^28.0.0",
