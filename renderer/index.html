@@ -647,7 +647,7 @@ async function deleteSched(id){
   await loadScheduledList(); render();
 }
 
-
+function showUpdateBanner(data){
   // إزالة أي banner قديم
   document.getElementById('updateBanner')?.remove();
   const banner = document.createElement('div');
