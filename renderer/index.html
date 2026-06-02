@@ -106,10 +106,10 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 <script>
 const S={
   user:null, step:0, page:'compose',
-  region:'sa', trends:[], selTrends:[], trendsReal:false, trendsError:'',
+  region:'sa', platform:'x', trends:[], selTrends:[], trendsReal:false, trendsError:'',
   fixedTags:true,
   bsSrc:'amazon', products:[], prodSearch:'',
-  afUrl:'', prodDesc:'', tone:'hype',
+  afUrl:'', prodDesc:'', prodImage:'', tone:'hype', category:'',
   tweet:'', saved:[],
   copySuccess:false,
 };
@@ -119,7 +119,29 @@ const TONES=[{id:'hype',l:'🔥 إثارة'},{id:'informative',l:'📊 معلو�
 const STEPS=['الترندات','التغريدة','الحفظ'];
 const SRCS=[{k:'amazon',l:'📦 أمازون'},{k:'noon',l:'🛍️ نون'},{k:'aliexpress',l:'🌐 علي إكسبريس'}];
 
-async function init(){
+const SUPPORT_WHATSAPP = '966559099222';
+const SUPPORT_MSG_BUY  = 'مرحباً، أريد شراء برنامج ناشر 🚀';
+const SUPPORT_MSG_HELP = 'مرحباً، أحتاج مساعدة في برنامج ناشر';
+const PAYMENT_INFO = {
+  stc:   '0500043462',
+  urpay: '0500043462',
+  bank:  { iban: 'SA7980000044060801614001', account: '44000000100060861400012' },
+  price: 99,
+};
+
+function openWhatsApp(msg){ window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank'); }
+
+function buildOrderMsg(data){
+  return `🛒 طلب شراء — ناشر\n\n` +
+    `الاسم: ${data.name}\n` +
+    `الجوال: ${data.phone}\n` +
+    `طريقة الدفع: ${data.method}\n` +
+    `المبلغ: 99 ريال\n` +
+    `${data.notes ? 'ملاحظات: ' + data.notes + '\n' : ''}` +
+    `\n⬇️ سأرفق صورة الإيصال في الرسالة التالية`;
+}
+
+
   // أولاً: تحقق من الترخيص
   const lic = await window.api.checkLicense();
   if (!lic.valid) {
@@ -131,19 +153,28 @@ async function init(){
   S.user = await window.api.getAuth();
   window.api.onAuthSuccess(u=>{ S.user=u; render(); });
   window.api.onAuthError(e=>{ alert('خطأ في الربط: '+e); render(); });
+  // استقبال إشعار التحديث
+  window.api.onUpdateAvailable(data => { S.updateAvailable=data; showUpdateBanner(data); });
   loadSaved();
   render();
 }
 
 function renderLicense(){
   return `<div class="cs">
-    <div class="cs-ic">🔐</div>
-    <div class="cs-t">أدخل كود التفعيل</div>
-    <div class="cs-s">احصل على كودك من خلال التواصل معنا</div>
-    <div style="width:100%;max-width:340px">
-      <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;margin-bottom:12px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
-      <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل</button>
-      <div id="licError" style="color:#ff8080;font-size:13px;margin-top:12px;text-align:center"></div>
+    <div class="cs-ic">✈️</div>
+    <div class="cs-t">ناشر</div>
+    <div class="cs-s">أداة التسويق بالعمولة الذكية على X</div>
+    <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px">
+      <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل الكود</button>
+      <div id="licError" style="color:#ff8080;font-size:13px;text-align:center"></div>
+      <div style="border-top:1px solid #1a2540;margin:4px 0"></div>
+      <button class="btn-big" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)" onclick="showPaymentPage()">
+        🛒 اشترك الآن — 99 ريال/سنة
+      </button>
+      <button class="btn btn-g" style="width:100%;padding:11px" onclick="openWhatsApp(SUPPORT_MSG_HELP)">
+        💬 الدعم الفني — 0559099222
+      </button>
     </div>
   </div>`;
 }
@@ -166,6 +197,120 @@ async function activateLicense(){
     err.textContent = '❌ ' + (result.error || 'كود غير صحيح');
     btn.disabled=false; btn.textContent='✅ تفعيل';
   }
+}
+
+// ── صفحة الدفع ────────────────────────────────────
+function showUpdateBanner(data){
+  // إزالة أي banner قديم
+  document.getElementById('updateBanner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'updateBanner';
+  banner.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#1d9bf0);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:13px;flex-shrink:0';
+  banner.innerHTML = `
+    <span>🆕 إصدار جديد متاح (v${data.latest}) — أنت على v${data.current}</span>
+    <div style="display:flex;gap:8px">
+      <button onclick="window.api.openReleases()" style="background:#fff;color:#7c3aed;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">تحديث الآن ↗</button>
+      <button onclick="document.getElementById('updateBanner').remove()" style="background:transparent;border:1px solid #ffffff55;color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer">لاحقاً</button>
+    </div>`;
+  // أضفه بعد الهيدر
+  document.querySelector('.hdr').after(banner);
+}
+
+
+  document.getElementById('app').innerHTML = renderPaymentPage();
+  bindPaymentPage();
+  document.getElementById('steps').innerHTML = '';
+  document.getElementById('hdrR').innerHTML = `<button class="btn btn-g btn-sm" onclick="location.reload()">← رجوع</button>`;
+}
+
+function renderPaymentPage(){
+  return `<div style="max-width:480px;margin:0 auto">
+    <div class="ptit">🛒 إتمام الاشتراك</div>
+    <div class="psub">اشتراك سنوي — 99 ريال</div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+        <div>✅ توليد تغريدات ذكية بالذكاء الاصطناعي</div>
+        <div>✅ ترندات X ويوتيوب مباشرة</div>
+        <div>✅ بحث منتجات أمازون ونون وعلي إكسبريس</div>
+        <div>✅ سحب صور المنتجات تلقائياً</div>
+        <div>✅ إرسال لواتساب بنقرة</div>
+        <div>✅ جميع التحديثات طوال السنة</div>
+        <div style="color:#f59e0b">⚠️ بعد انتهاء السنة يحتاج تجديد للتحديثات</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">💳 اختر طريقة الدفع</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+        <div class="pc" id="pm-stc" onclick="selectPayMethod('stc')" style="text-align:center;padding:14px 8px;cursor:pointer">
+          <div style="font-size:20px">📱</div>
+          <div style="font-size:12px;font-weight:600;margin-top:4px">STC Pay</div>
+          <div style="font-size:11px;color:#6b7280">${PAYMENT_INFO.stc}</div>
+        </div>
+        <div class="pc" id="pm-urpay" onclick="selectPayMethod('urpay')" style="text-align:center;padding:14px 8px;cursor:pointer">
+          <div style="font-size:20px">💜</div>
+          <div style="font-size:12px;font-weight:600;margin-top:4px">URPay</div>
+          <div style="font-size:11px;color:#6b7280">${PAYMENT_INFO.urpay}</div>
+        </div>
+        <div class="pc" id="pm-bank" onclick="selectPayMethod('bank')" style="text-align:center;padding:14px 8px;cursor:pointer">
+          <div style="font-size:20px">🏦</div>
+          <div style="font-size:12px;font-weight:600;margin-top:4px">تحويل بنكي</div>
+          <div style="font-size:11px;color:#6b7280">IBAN</div>
+        </div>
+      </div>
+      <div id="payDetails" style="display:none;background:#0a0f1a;border:1px solid #1d9bf033;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px"></div>
+    </div>
+    <div class="card">
+      <div class="ct">📋 بياناتك</div>
+      <div class="f"><label>الاسم الكامل *</label><input id="payName" placeholder="محمد عبدالله"></div>
+      <div class="f"><label>رقم الجوال *</label><input id="payPhone" placeholder="05xxxxxxxx" type="tel"></div>
+      <div class="f"><label>ملاحظات (اختياري)</label><input id="payNotes" placeholder="أي معلومات إضافية"></div>
+      <div style="background:#1d9bf011;border:1px solid #1d9bf033;border-radius:9px;padding:12px;font-size:12px;color:#7ab8f5;margin-top:4px">
+        📎 بعد إرسال الرسالة — أرفق صورة إيصال الدفع في نفس المحادثة
+      </div>
+    </div>
+    <div id="payError" style="font-size:13px;margin-bottom:10px;text-align:center"></div>
+    <button class="btn btn-p" id="btnSubmitOrder" style="font-size:15px;padding:14px;margin-bottom:8px">📲 إرسال الطلب عبر واتساب</button>
+    <div style="font-size:11px;color:#6b7280;text-align:center;margin-bottom:20px">سنرسل لك كود التفعيل بعد التحقق من الإيصال</div>
+  </div>`;
+}
+
+function bindPaymentPage(){
+  let selectedMethod = '';
+  window.selectPayMethod = (method) => {
+    selectedMethod = method;
+    ['stc','urpay','bank'].forEach(m => document.getElementById('pm-'+m)?.classList.remove('sel'));
+    document.getElementById('pm-'+method)?.classList.add('sel');
+    const details = document.getElementById('payDetails');
+    details.style.display = 'block';
+    if(method === 'stc'){
+      details.innerHTML = `<div style="color:#a78bfa;font-weight:600;margin-bottom:6px">📱 STC Pay</div>
+        <div>ادفع على الرقم: <span style="color:#fff;font-weight:700;font-size:15px">${PAYMENT_INFO.stc}</span></div>
+        <div style="color:#6b7280;margin-top:4px">المبلغ: <span style="color:#f59e0b;font-weight:700">99 ريال</span></div>`;
+    } else if(method === 'urpay'){
+      details.innerHTML = `<div style="color:#a78bfa;font-weight:600;margin-bottom:6px">💜 URPay</div>
+        <div>ادفع على الرقم: <span style="color:#fff;font-weight:700;font-size:15px">${PAYMENT_INFO.urpay}</span></div>
+        <div style="color:#6b7280;margin-top:4px">المبلغ: <span style="color:#f59e0b;font-weight:700">99 ريال</span></div>`;
+    } else {
+      details.innerHTML = `<div style="color:#a78bfa;font-weight:600;margin-bottom:6px">🏦 تحويل بنكي</div>
+        <div style="margin-bottom:4px">رقم الحساب: <span style="color:#fff;font-weight:600">${PAYMENT_INFO.bank.account}</span></div>
+        <div style="margin-bottom:4px">الآيبان: <span style="color:#fff;font-weight:600">${PAYMENT_INFO.bank.iban}</span></div>
+        <div style="color:#6b7280">المبلغ: <span style="color:#f59e0b;font-weight:700">99 ريال</span></div>`;
+    }
+  };
+  document.getElementById('btnSubmitOrder')?.addEventListener('click', () => {
+    const name    = document.getElementById('payName')?.value?.trim();
+    const phone   = document.getElementById('payPhone')?.value?.trim();
+    const notes   = document.getElementById('payNotes')?.value?.trim();
+    const errEl   = document.getElementById('payError');
+    if(!name)         { errEl.style.color='#ff8080'; errEl.textContent='⚠️ أدخل اسمك الكامل'; return; }
+    if(!phone)        { errEl.style.color='#ff8080'; errEl.textContent='⚠️ أدخل رقم جوالك'; return; }
+    if(!selectedMethod){ errEl.style.color='#ff8080'; errEl.textContent='⚠️ اختر طريقة الدفع أولاً'; return; }
+    const METHODS = { stc:'STC Pay', urpay:'URPay', bank:'تحويل بنكي' };
+    const msg = buildOrderMsg({ name, phone, method: METHODS[selectedMethod], notes });
+    openWhatsApp(msg);
+    errEl.style.color = '#00c896';
+    errEl.textContent = '✅ افتح واتساب — أرسل الرسالة ثم أرفق صورة الإيصال';
+  });
 }
 
 // ── حفظ محلي ─────────────────────────────────────
@@ -206,6 +351,7 @@ function renderHdr(){
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
+      <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
       <div class="ubadge"><span class="uname">@${S.user.username}</span></div>
       <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="logout()">خروج</button>`;
   } else { st.innerHTML=''; hr.innerHTML=''; }
@@ -243,6 +389,11 @@ function renderS0(){
   <div class="card">
     <div class="ct">🌍 المنطقة</div>
     <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
+    <div class="ct" style="margin-top:12px">📱 المنصة</div>
+    <div class="tabs">
+      <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 X (تويتر)</button>
+      <button class="tab ${S.platform==='youtube'?'active':''}" onclick="S.platform='youtube';S.trends=[];S.trendsReal=false;S.trendsError='';render()">▶️ يوتيوب</button>
+    </div>
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
@@ -290,14 +441,43 @@ function renderS1(){
     <div class="ct">🔗 رابط الأفلييت ووصف المنتج</div>
     <div class="f">
       <label>رابط الأفلييت *</label>
-      <input id="afUrl" placeholder="https://..." value="${S.afUrl}">
-    </div>
-    <div style="display:flex;gap:8px;align-items:flex-end">
-      <div style="flex:1" class="f">
-        <label>وصف المنتج (اختياري)</label>
-        <input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${S.prodDesc}">
+      <div style="display:flex;gap:8px">
+        <input id="afUrl" placeholder="https://..." value="${S.afUrl}" style="flex:1">
+        <button class="btn btn-g" id="btnFetchImg" style="width:auto;padding:10px 14px;font-size:12px" title="سحب صورة المنتج تلقائياً">🖼️ جلب صورة</button>
       </div>
-      <button class="btn btn-g" style="width:auto;padding:10px 14px;font-size:12px;margin-bottom:14px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';render()" title="مسح وبدء من جديد">🗑️</button>
+    </div>
+    <div class="f">
+      <label>وصف المنتج (اختياري)</label>
+      <input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${S.prodDesc}">
+    </div>
+    ${S.prodImage ? `
+    <div style="margin-top:4px">
+      <label>صورة المنتج</label>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+        <img src="${S.prodImage}" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid #1a2540">
+        <div style="flex:1;font-size:12px;color:#6b7280">سيتم نسخ رابط الصورة مع التغريدة للصق يدوي في X</div>
+        <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="S.prodImage='';render()">✕ حذف</button>
+      </div>
+    </div>` : ''}
+    <div style="margin-top:10px">
+      <label>أو ارفع صورة من جهازك</label>
+      <input type="file" id="imgUpload" accept="image/*" style="margin-top:6px;font-size:12px;padding:6px">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';S.prodImage='';render()" title="مسح وبدء من جديد">🗑️ مسح الكل</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">🏷️ فئة المنتج (اختياري)</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${[
+        {k:'',l:'🌐 عام'},
+        {k:'electronics',l:'📱 إلكترونيات'},
+        {k:'fashion',l:'👗 موضة'},
+        {k:'food',l:'🍔 طعام'},
+        {k:'beauty',l:'💄 جمال'},
+        {k:'home',l:'🏠 منزل'},
+      ].map(c=>`<button class="tab ${S.category===c.k?'active':''}" onclick="S.category='${c.k}';render()">${c.l}</button>`).join('')}
     </div>
   </div>
   <div class="card">
@@ -327,6 +507,31 @@ function bindS1(){
   document.getElementById('prodSearch')?.addEventListener('keydown', e=>{ if(e.key==='Enter') fetchBs(); });
   document.getElementById('btnGen')?.addEventListener('click', genTweet);
   document.getElementById('btnN1')?.addEventListener('click', ()=>{ S.step=2; render(); });
+  // جلب الصورة من الرابط
+  document.getElementById('btnFetchImg')?.addEventListener('click', async()=>{
+    const url = document.getElementById('afUrl')?.value?.trim();
+    if(!url){ alert('أدخل الرابط أولاً'); return; }
+    S.afUrl = url;
+    const btn = document.getElementById('btnFetchImg');
+    btn.disabled=true; btn.textContent='⏳...';
+    const r = await window.api.fetchProductImage(url);
+    if(r.success){
+      S.prodImage = r.imageUrl;
+      if(r.pageTitle && !S.prodDesc) S.prodDesc = r.pageTitle.substring(0,80);
+    } else {
+      alert('لم يتم العثور على صورة — يمكنك رفع صورة يدوياً');
+    }
+    btn.disabled=false; btn.textContent='🖼️ جلب صورة';
+    render();
+  });
+  // رفع صورة يدوياً
+  document.getElementById('imgUpload')?.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{ S.prodImage = ev.target.result; render(); };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ── الخطوة 2: حفظ ونسخ (بدل النشر) ─────────────
@@ -337,6 +542,7 @@ function renderS2(){
     <div style="font-size:12px;color:#6b7280;margin-bottom:20px">التغريدة جاهزة في الحافظة</div>
     <div class="succ-b">
       <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="resetW()">+ تغريدة جديدة</button>
+      <button class="btn btn-g" style="width:auto;padding:10px 22px;background:#25D366;border-color:#25D366;color:#fff" onclick="openWhatsApp(S.tweet)">📲 إرسال لواتساب</button>
       <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="goPage('saved')">💾 المحفوظات</button>
       <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="openX()">فتح X ↗</button>
     </div>
@@ -345,12 +551,16 @@ function renderS2(){
   const cc=S.tweet.length, overLimit=cc>280;
   return `<div class="ptit">حفظ ونسخ التغريدة</div>
   <div style="background:#0d1421;border:1px solid #1a2540;border-radius:12px;padding:16px;margin-bottom:16px">
+    ${S.prodImage?`<img src="${S.prodImage}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px">`:'' }
     <div style="font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word">${escHtml(S.tweet)}</div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a2540;font-size:12px;color:${overLimit?'#ff4444':'#00c896'};font-weight:700">${cc}/280 حرف</div>
   </div>
+  ${S.prodImage?`<div style="font-size:11px;color:#6b7280;margin-bottom:12px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 12px">💡 الصورة جاهزة — بعد النسخ افتح X والصق التغريدة ثم أضف الصورة يدوياً</div>`:''}
   ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
   <div style="display:flex;gap:10px;flex-direction:column">
+    ${S.prodImage?`<button class="btn btn-g" id="btnCopyImg" style="font-size:13px;padding:10px">📸 نسخ رابط الصورة للحافظة</button>`:''}
     <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ التغريدة للحافظة</button>
+    <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب الشخصي</button>
     <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
     <div style="display:flex;gap:10px">
       <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
@@ -359,7 +569,20 @@ function renderS2(){
   </div>`;
 }
 function bindS2(){
+  document.getElementById('btnCopyImg')?.addEventListener('click', async()=>{
+    if(!S.prodImage) return;
+    // إذا كانت data URL نخبر المستخدم بحفظها
+    if(S.prodImage.startsWith('data:')){
+      // نفتح الصورة في نافذة جديدة
+      const win = window.open();
+      win.document.write(`<img src="${S.prodImage}" style="max-width:100%">`);
+    } else {
+      await navigator.clipboard.writeText(S.prodImage);
+      alert('✅ تم نسخ رابط الصورة');
+    }
+  });
   document.getElementById('btnCopy')?.addEventListener('click', copyTweet);
+  document.getElementById('btnWA')?.addEventListener('click', ()=> openWhatsApp(S.tweet));
   document.getElementById('btnSave')?.addEventListener('click', ()=>{
     saveTweet(S.tweet);
     alert('✅ تم الحفظ في المحفوظات');
@@ -376,6 +599,7 @@ function renderSavedPage(){
     <div class="saved-text">${escHtml(t.text)}</div>
     <div class="saved-actions">
       <button class="btn btn-g btn-sm" onclick="copySaved('${escAttr(t.text)}')">📋 نسخ</button>
+      <button class="btn btn-g btn-sm" style="background:#25D366;border-color:#25D366;color:#fff" onclick="openWhatsApp('${escAttr(t.text)}')">📲 واتساب</button>
       <button class="btn btn-g btn-sm" onclick="openXWith('${escAttr(t.text)}')">فتح X</button>
       <button class="btn btn-g btn-sm" style="color:#ff6b6b;border-color:#ff444433" onclick="deleteSavedItem(${t.id})">🗑️</button>
     </div>
@@ -389,7 +613,7 @@ async function fetchTrends(){
   btn.disabled=true; btn.textContent='⏳ جاري الجلب...';
   S.trends=[]; S.trendsReal=false; S.trendsError='';
   try {
-    const r=await window.api.fetchTrends({region:S.region});
+    const r=await window.api.fetchTrends({region:S.region, platform:S.platform});
     if(r.success && r.trends.length>0){ S.trends=r.trends; S.trendsReal=true; }
     else S.trendsError=r.error||'فشل جلب الترندات';
   } catch(e){ S.trendsError=e.message; }
@@ -430,7 +654,7 @@ async function genTweet(){
   S.afUrl=af; S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
   const btn=document.getElementById('btnGen'), ld=document.getElementById('genLd');
   btn.disabled=true; if(ld) ld.style.display='block';
-  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone, fixedTags:S.fixedTags});
+  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone, fixedTags:S.fixedTags, category:S.category});
   if(r.success) S.tweet=r.tweet;
   btn.disabled=false; if(ld) ld.style.display='none';
   render();
@@ -473,7 +697,7 @@ async function logout(){
 
 function goStep(n){ S.step=n; render(); }
 function goPage(p){ S.page=p; render(); }
-function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.copySuccess=false; render(); }
+function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImage=''; S.copySuccess=false; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\n/g,'\\n'); }
 
