@@ -78,6 +78,8 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 .char-ok{background:#00c8960d;border:1px solid #00c89633;border-radius:9px;padding:8px 13px;font-size:12px;color:#00c896}
 .real-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:#00c89622;color:#00c896;border:1px solid #00c89633;margin-right:6px}
 .err-box{background:#ff44440d;border:1px solid #ff444433;border-radius:9px;padding:14px;font-size:12px;color:#ff8080;margin-bottom:14px;line-height:1.8}
+.seo-res-box{background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:13px;cursor:pointer;transition:border-color .2s,background .2s}
+.seo-res-box:hover{border-color:#1d9bf0}
 .succ-copy{text-align:center;padding:40px 20px}
 .succ-ic{font-size:60px;margin-bottom:14px}
 .succ-t{font-size:20px;color:#00c896;font-weight:700;margin-bottom:6px}
@@ -111,7 +113,7 @@ const S={
   bsSrc:'amazon', products:[], prodSearch:'',
   afUrl:'', prodDesc:'', prodImages:[], tone:'hype', category:'',
   tweet:'', saved:[],
-  copySuccess:false,
+  copySuccess:false, postResult:null,
 };
 
 const REGIONS=[{k:'sa',l:'🇸🇦 السعودية'},{k:'world',l:'🌍 العالم'},{k:'ae',l:'🇦🇪 الإمارات'},{k:'eg',l:'🇪🇬 مصر'}];
@@ -204,35 +206,64 @@ async function activateLicense(){
 }
 
 // ── صفحة SEO يوتيوب ──────────────────────────────
-const SEO_STATE = { title:'', trends:[], result:null, loading:false, copied:false };
+const SEO_STATE = {
+  title:'', afUrl:'', trends:[], selTrend:null,
+  category:'', tone:'promotional',
+  result:null, loading:false,
+};
 
 function renderSeoPage(){
   const r = SEO_STATE.result;
+  const TONES_SEO = [
+    {id:'promotional', l:'🛒 ترويجي'},
+    {id:'review',      l:'⭐ مراجعة'},
+    {id:'tutorial',    l:'📚 تعليمي'},
+    {id:'comparison',  l:'⚖️ مقارنة'},
+  ];
+  const CATS = [
+    {k:'',            l:'🌐 عام'},
+    {k:'electronics', l:'📱 إلكترونيات'},
+    {k:'fashion',     l:'👗 موضة'},
+    {k:'food',        l:'🍔 طعام'},
+    {k:'beauty',      l:'💄 جمال'},
+    {k:'home',        l:'🏠 منزل'},
+  ];
   return `<div class="ptit">📈 SEO يوتيوب</div>
-  <div class="psub">اكتب عنوان المنتج واختر ترنداً لتوليد محتوى SEO محسّن</div>
+  <div class="psub">اكتب عنوان المنتج لتوليد وصف يوتيوب محسّن للـ SEO</div>
 
   <div class="card">
-    <div class="ct">🎯 عنوان المنتج أو الفيديو</div>
+    <div class="ct">🎯 بيانات الفيديو</div>
     <div class="f">
-      <input id="seoTitle" placeholder="مثل: سماعات AirPods Pro لاسلكية بتخفيض 40%" value="${SEO_STATE.title}">
+      <label>عنوان المنتج أو الفيديو *</label>
+      <input id="seoTitle" placeholder="مثل: مراجعة سماعات AirPods Pro" value="${SEO_STATE.title}">
+    </div>
+    <div class="f">
+      <label>رابط المنتج (اختياري)</label>
+      <input id="seoAfUrl" placeholder="https://amzn.to/..." value="${SEO_STATE.afUrl}">
+    </div>
+    <div class="f">
+      <label>فئة المنتج</label>
+      <div class="tabs" style="margin-bottom:0">
+        ${CATS.map(c=>`<button class="tab ${SEO_STATE.category===c.k?'active':''}" onclick="SEO_STATE.category='${c.k}';render()">${c.l}</button>`).join('')}
+      </div>
+    </div>
+    <div class="f" style="margin-bottom:0">
+      <label>نوع الفيديو</label>
+      <div class="tones" style="grid-template-columns:1fr 1fr">
+        ${TONES_SEO.map(t=>`<button class="tone ${SEO_STATE.tone===t.id?'active':''}" onclick="SEO_STATE.tone='${t.id}';render()">${t.l}</button>`).join('')}
+      </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="ct">📱 جلب ترندات يوتيوب للإلهام</div>
-    <div class="tabs">
-      ${[{k:'sa',l:'🇸🇦 السعودية'},{k:'ae',l:'🇦🇪 الإمارات'},{k:'eg',l:'🇪🇬 مصر'},{k:'world',l:'🌍 العالم'}]
-        .map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}'">${r.l}</button>`).join('')}
-    </div>
-    <button class="btn btn-g" id="btnSeoTrends" style="width:auto;padding:8px 18px;font-size:13px">▶️ جلب ترندات يوتيوب</button>
+    <div class="ct">▶️ ترندات يوتيوب</div>
+    <button class="btn btn-g" id="btnSeoTrends" style="width:auto;padding:8px 18px;font-size:13px">🔄 جلب الترندات</button>
     ${SEO_STATE.trends.length ? `
     <div style="margin-top:12px">
-      <div style="font-size:12px;color:#6b7280;margin-bottom:8px">اختر ترنداً لإضافته للعنوان (اختياري):</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px">اختر ترنداً لإضافته للوصف (اختياري):</div>
       <div style="display:flex;flex-wrap:wrap;gap:7px">
         ${SEO_STATE.trends.map((t,i)=>`
-          <span onclick="addTrendToTitle(${i})" style="padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:1px solid #1a2540;background:#0d1421;color:#aaa;transition:all .2s"
-            onmouseover="this.style.borderColor='#1d9bf0';this.style.color='#1d9bf0'"
-            onmouseout="this.style.borderColor='#1a2540';this.style.color='#aaa'">
+          <span onclick="selectSeoTrend(${i})" style="padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:2px solid ${SEO_STATE.selTrend===i?'#1d9bf0':'#1a2540'};background:${SEO_STATE.selTrend===i?'#0c2d4a':'#0d1421'};color:${SEO_STATE.selTrend===i?'#1d9bf0':'#aaa'};transition:all .2s">
             ${t.title || t.name}
           </span>`).join('')}
       </div>
@@ -240,91 +271,169 @@ function renderSeoPage(){
   </div>
 
   <button class="btn btn-pu" id="btnGenSeo" style="margin-bottom:16px;font-size:15px;padding:13px" ${SEO_STATE.loading?'disabled':''}>
-    ${SEO_STATE.loading ? '<span class="spin"></span> جاري التوليد...' : '✨ توليد محتوى SEO'}
+    ${SEO_STATE.loading ? '<span class="spin"></span> جاري التوليد...' : '✨ توليد وصف يوتيوب'}
   </button>
 
   ${r ? `
   <div class="card">
-    <div class="ct">📋 النتيجة — انقر على أي قسم لنسخه</div>
+    <div class="ct" style="color:#00c896">✅ الناتج — اضغط على أي قسم لنسخه</div>
 
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ العنوان المحسّن (SEO Title)</div>
-      <div onclick="copySection('seoResTitle')" id="seoResTitle" style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:14px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='#1d9bf0'" onmouseout="this.style.borderColor='#1a2540'">
-        ${escHtml(r.title)}
-      </div>
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ العنوان المحسّن</div>
+      <div onclick="copySection('seoResTitle')" id="seoResTitle" class="seo-res-box">${escHtml(r.title)}</div>
     </div>
 
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">📝 الوصف (Description)</div>
-      <div onclick="copySection('seoResDesc')" id="seoResDesc" style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:13px;line-height:1.8;cursor:pointer;white-space:pre-wrap;transition:border-color .2s" onmouseover="this.style.borderColor='#1d9bf0'" onmouseout="this.style.borderColor='#1a2540'">
-        ${escHtml(r.description)}
-      </div>
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">📝 الوصف الكامل</div>
+      <div onclick="copySection('seoResDesc')" id="seoResDesc" class="seo-res-box" style="white-space:pre-wrap;line-height:1.9;max-height:300px;overflow-y:auto">${escHtml(r.description)}</div>
     </div>
 
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ الهاشتاقات والكلمات المفتاحية</div>
-      <div onclick="copySection('seoResTags')" id="seoResTags" style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:13px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='#1d9bf0'" onmouseout="this.style.borderColor='#1a2540'">
-        ${escHtml(r.tags)}
-      </div>
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🔖 الوسوم (Tags)</div>
+      <div onclick="copySection('seoResTags')" id="seoResTags" class="seo-res-box">${escHtml(r.tags)}</div>
     </div>
 
-    <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ الكل</button>
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🔑 كلمات مفتاحية للبحث</div>
+      <div onclick="copySection('seoResKeywords')" id="seoResKeywords" class="seo-res-box">${escHtml(r.keywords)}</div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ كل الوصف</button>
+      <button class="btn btn-g" onclick="SEO_STATE.result=null;render()" style="width:auto;padding:11px 18px;font-size:13px">🔄 إعادة التوليد</button>
+    </div>
   </div>` : ''}`;
 }
 
 function bindSeoPage(){
   document.getElementById('seoTitle')?.addEventListener('input', e => SEO_STATE.title = e.target.value);
+  document.getElementById('seoAfUrl')?.addEventListener('input', e => SEO_STATE.afUrl = e.target.value);
   document.getElementById('btnSeoTrends')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSeoTrends');
     btn.disabled=true; btn.textContent='⏳...';
-    const r = await window.api.fetchTrends({ region: S.region, platform: 'youtube' });
+    const r = await window.api.fetchTrends({ region: 'sa', platform: 'youtube' });
     if(r.success) SEO_STATE.trends = r.trends;
-    btn.disabled=false; btn.textContent='▶️ جلب ترندات يوتيوب';
+    btn.disabled=false; btn.textContent='🔄 جلب الترندات';
     render();
   });
   document.getElementById('btnGenSeo')?.addEventListener('click', generateSeo);
 }
 
-window.addTrendToTitle = (i) => {
-  const t = SEO_STATE.trends[i];
-  if(!t) return;
-  const titleEl = document.getElementById('seoTitle');
-  const add = t.title || t.name.replace('#','');
-  SEO_STATE.title = (SEO_STATE.title + ' ' + add).trim();
-  if(titleEl) titleEl.value = SEO_STATE.title;
+window.selectSeoTrend = (i) => {
+  SEO_STATE.selTrend = SEO_STATE.selTrend === i ? null : i;
+  render();
 };
 
 async function generateSeo(){
   const title = document.getElementById('seoTitle')?.value?.trim() || SEO_STATE.title;
-  if(!title){ alert('أدخل عنوان المنتج أولاً'); return; }
+  const afUrl = document.getElementById('seoAfUrl')?.value?.trim() || SEO_STATE.afUrl;
+  if(!title){ alert('أدخل عنوان الفيديو أولاً'); return; }
   SEO_STATE.title = title;
+  SEO_STATE.afUrl = afUrl;
   SEO_STATE.loading = true;
   render();
 
-  // توليد SEO محلياً بدون API
-  const trendNames = SEO_STATE.trends.slice(0,5).map(t => t.title || t.name.replace('#','')).join('، ');
+  const trend = SEO_STATE.selTrend !== null ? (SEO_STATE.trends[SEO_STATE.selTrend]?.title || '') : '';
+  const year = new Date().getFullYear();
 
-  const CATEGORIES_AR = { electronics:'إلكترونيات', fashion:'موضة', food:'طعام', beauty:'جمال وعناية', home:'منزل وديكور' };
-  const cat = CATEGORIES_AR[S.category] || 'منتجات';
+  const CATS_AR = { electronics:'إلكترونيات', fashion:'موضة وأزياء', food:'طعام ومطاعم', beauty:'جمال وعناية', home:'منزل وديكور' };
+  const catAr = CATS_AR[SEO_STATE.category] || 'تسوق';
 
   // عنوان SEO محسّن
-  const seoTitle = `${title} | أفضل سعر 2025 | تسوق الآن`;
+  const seoTitle = `${title} | أفضل سعر ${year} | ${catAr}`;
 
-  // وصف محسّن
-  const desc = `🔥 ${title}\n\n` +
-    `هل تبحث عن ${title}؟ وجدنا لك أفضل عرض متاح الآن بسعر لا يُصدق!\n\n` +
-    `✅ جودة عالية مضمونة\n` +
-    `✅ شحن سريع لجميع المناطق\n` +
-    `✅ أفضل سعر في السوق\n` +
-    `✅ ضمان وإرجاع مجاني\n\n` +
-    `${trendNames ? `🔗 مرتبط بـ: ${trendNames}\n\n` : ''}` +
-    `لا تفوت هذا العرض — الكمية محدودة! 🚨`;
+  // وصف يوتيوب حسب النوع
+  const INTROS = {
+    promotional: `🛒 في هذا الفيديو نعرض لك أفضل عرض على ${title}!
 
-  // هاشتاقات وكلمات مفتاحية
-  const baseKeywords = title.split(' ').filter(w => w.length > 2).map(w => `#${w}`).join(' ');
-  const tags = `${baseKeywords} #${cat} #تسوق #عروض #تخفيضات #أفضل_سعر #تسوق_اونلاين #السعودية #فيصل_يختار`;
+لا تفوت هذه الفرصة الذهبية — سعر لن تجده في أي مكان آخر.`,
+    review:      `⭐ مراجعة شاملة لـ ${title}
 
-  SEO_STATE.result = { title: seoTitle, description: desc, tags };
+هل يستحق السعر؟ كل ما تحتاج معرفته قبل الشراء في هذا الفيديو.`,
+    tutorial:    `📚 في هذا الفيديو سنشرح كيفية الاستخدام الصحيح لـ ${title}
+
+خطوة بخطوة حتى تحصل على أفضل نتيجة.`,
+    comparison:  `⚖️ مقارنة شاملة: ${title} مقابل المنافسين
+
+أيهم يستحق أموالك؟ نجاوب في هذا الفيديو.`,
+  };
+
+  const intro = INTROS[SEO_STATE.tone] || INTROS.promotional;
+
+  const desc = `${intro}
+
+` +
+    `━━━━━━━━━━━━━━━━━━━━
+` +
+    `📌 ما ستجده في هذا الفيديو:
+` +
+    `• مميزات ${title}
+` +
+    `• مقارنة الأسعار
+` +
+    `• أفضل مكان للشراء
+` +
+    `• تقييم حقيقي وصادق
+
+` +
+    `━━━━━━━━━━━━━━━━━━━━
+` +
+    `${afUrl ? `🔗 رابط المنتج:
+${afUrl}
+
+` : ''}` +
+    `━━━━━━━━━━━━━━━━━━━━
+` +
+    `⏱️ الفهرس:
+` +
+    `00:00 - المقدمة
+` +
+    `00:30 - نظرة عامة
+` +
+    `02:00 - المميزات والعيوب
+` +
+    `04:00 - مقارنة السعر
+` +
+    `05:30 - التقييم النهائي
+
+` +
+    `━━━━━━━━━━━━━━━━━━━━
+` +
+    `${trend ? `🔥 ترند اليوم: ${trend}
+
+` : ''}` +
+    `✅ اشترك في القناة وفعّل الجرس 🔔 لتصلك كل العروض والمراجعات
+
+` +
+    `#فيصل_يختار #تخفيضات #${catAr.replace(/\s/g,'_')}`;
+
+  // وسوم يوتيوب
+  const titleWords = title.split(' ').filter(w=>w.length>2);
+  const tags = [
+    title,
+    ...titleWords,
+    catAr,
+    'تسوق اونلاين',
+    'افضل سعر',
+    'عروض وتخفيضات',
+    'مراجعة منتجات',
+    'توصيات تسوق',
+    trend || '',
+    'فيصل يختار',
+  ].filter(Boolean).join(', ');
+
+  // كلمات مفتاحية للبحث
+  const keywords = [
+    `${title} سعر`,
+    `${title} مراجعة`,
+    `${title} افضل`,
+    `اشتري ${title}`,
+    `عروض ${catAr}`,
+    `تخفيضات ${year}`,
+    `افضل ${catAr} ${year}`,
+  ].join(' | ');
+
+  SEO_STATE.result = { title: seoTitle, description: desc, tags, keywords };
   SEO_STATE.loading = false;
   render();
 }
@@ -332,8 +441,7 @@ async function generateSeo(){
 window.copySection = async (id) => {
   const el = document.getElementById(id);
   if(!el) return;
-  const text = el.innerText;
-  await window.api.copyToClipboard(text);
+  await window.api.copyToClipboard(el.innerText);
   el.style.borderColor = '#00c896';
   el.style.background = '#00c89608';
   setTimeout(()=>{ el.style.borderColor='#1a2540'; el.style.background='#0a0f1a'; }, 1500);
@@ -342,13 +450,204 @@ window.copySection = async (id) => {
 async function copyAllSeo(){
   const r = SEO_STATE.result;
   if(!r) return;
-  const all = `العنوان:\n${r.title}\n\nالوصف:\n${r.description}\n\nالهاشتاقات:\n${r.tags}`;
+  const all = `العنوان:
+${r.title}
+
+${'━'.repeat(30)}
+الوصف:
+${r.description}
+
+${'━'.repeat(30)}
+الوسوم:
+${r.tags}
+
+${'━'.repeat(30)}
+الكلمات المفتاحية:
+${r.keywords}`;
   await window.api.copyToClipboard(all);
   alert('✅ تم نسخ كل المحتوى');
 }
 
 
-function showUpdateBanner(data){
+
+// ── صفحة الجدولة الذكية ──────────────────────────
+const SCHED_STATE = {
+  tweets: [],        // التغريدات المضافة
+  dailyCount: 3,     // عدد التغريدات يومياً
+  startToday: true,  // ابدأ اليوم أم غداً
+  scheduled: [],     // التغريدات المجدولة
+  loading: false,
+  newTweet: '',
+};
+
+const BEST_TIMES = {
+  1: ['8:00 مساءً'],
+  2: ['9:00 صباحاً', '8:00 مساءً'],
+  3: ['9:00 صباحاً', '2:00 ظهراً', '8:00 مساءً'],
+  4: ['8:00 صباحاً', '12:00 ظهراً', '5:00 مساءً', '9:00 مساءً'],
+  5: ['8:00 صباحاً', '11:00 صباحاً', '2:00 ظهراً', '6:00 مساءً', '9:00 مساءً'],
+};
+
+function renderSchedulePage(){
+  const times = BEST_TIMES[SCHED_STATE.dailyCount] || BEST_TIMES[3];
+  return `<div class="ptit">🕐 الجدولة الذكية</div>
+  <div class="psub">أضف تغريداتك وحدد عدد النشر يومياً — سنختار أفضل الأوقات تلقائياً</div>
+
+  <!-- إضافة تغريدات -->
+  <div class="card">
+    <div class="ct">✏️ أضف تغريداتك (${SCHED_STATE.tweets.length} تغريدة)</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <textarea id="schedNewTweet" placeholder="اكتب تغريدة أو الصق من المحفوظات..." style="flex:1;min-height:70px;resize:vertical">${SCHED_STATE.newTweet}</textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p btn-sm" id="btnAddTweet" style="padding:9px 18px">➕ إضافة</button>
+      <button class="btn btn-g btn-sm" id="btnAddFromSaved" style="padding:9px 18px">💾 من المحفوظات</button>
+    </div>
+    ${SCHED_STATE.tweets.length > 0 ? `
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+      ${SCHED_STATE.tweets.map((t,i)=>`
+        <div style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1;font-size:12px;color:#ccd;line-height:1.6">${escHtml(t.substring(0,120))}${t.length>120?'...':''}</div>
+          <div style="display:flex;gap:5px;flex-shrink:0">
+            <span style="font-size:10px;color:${t.length>280?'#ff4444':'#6b7280'}">${t.length}/280</span>
+            <button onclick="SCHED_STATE.tweets.splice(${i},1);render()" style="background:#ff444422;border:1px solid #ff444433;color:#ff6b6b;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">✕</button>
+          </div>
+        </div>`).join('')}
+      <button class="btn btn-g" onclick="SCHED_STATE.tweets=[];render()" style="width:auto;padding:7px 14px;font-size:12px;color:#ff6b6b">🗑️ مسح الكل</button>
+    </div>` : ''}
+  </div>
+
+  <!-- إعدادات الجدولة -->
+  <div class="card">
+    <div class="ct">⚙️ إعدادات النشر</div>
+    <div class="f">
+      <label>عدد التغريدات يومياً</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[1,2,3,4,5].map(n=>`
+          <button onclick="SCHED_STATE.dailyCount=${n};render()" style="width:48px;height:48px;border-radius:10px;border:2px solid ${SCHED_STATE.dailyCount===n?'#1d9bf0':'#1a2540'};background:${SCHED_STATE.dailyCount===n?'#0c2d4a':'#0d1421'};color:${SCHED_STATE.dailyCount===n?'#1d9bf0':'#6b7280'};font-size:18px;font-weight:700;cursor:pointer">${n}</button>`).join('')}
+      </div>
+    </div>
+    <div class="f" style="margin-bottom:0">
+      <label>أوقات النشر المثلى (بتوقيت السعودية)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        ${times.map(t=>`<span style="padding:5px 12px;border-radius:16px;font-size:12px;background:#1d9bf011;border:1px solid #1d9bf033;color:#7ab8f5">🕐 ${t}</span>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:14px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#e0e0e0">ابدأ من اليوم</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">${SCHED_STATE.startToday ? 'يبدأ النشر اليوم' : 'يبدأ النشر من الغد'}</div>
+      </div>
+      <div class="tog" style="background:${SCHED_STATE.startToday?'#1d9bf0':'#1a2540'}" onclick="SCHED_STATE.startToday=!SCHED_STATE.startToday;render()">
+        <div class="tog-dot" style="${SCHED_STATE.startToday?'right:2px':'left:2px'}"></div>
+      </div>
+    </div>
+  </div>
+
+  ${SCHED_STATE.tweets.length > 0 ? `
+  <div style="background:#1d9bf011;border:1px solid #1d9bf033;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#7ab8f5">
+    📊 سيتم جدولة <strong>${SCHED_STATE.tweets.length}</strong> تغريدة على مدى <strong>${Math.ceil(SCHED_STATE.tweets.length/SCHED_STATE.dailyCount)}</strong> أيام
+    بمعدل <strong>${SCHED_STATE.dailyCount}</strong> تغريدة يومياً
+  </div>
+  <button class="btn btn-p" id="btnSmartSchedule" style="font-size:15px;padding:14px;margin-bottom:16px" ${SCHED_STATE.loading?'disabled':''}>
+    ${SCHED_STATE.loading ? '<span class="spin"></span> جاري الجدولة...' : '🚀 جدولة ذكية'}
+  </button>` : ''}
+
+  <!-- التغريدات المجدولة -->
+  ${SCHED_STATE.scheduled.length > 0 ? `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="ct" style="margin:0;color:#00c896">✅ مجدولة (${SCHED_STATE.scheduled.filter(x=>x.status==='pending').length} انتظار)</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-g btn-sm" id="btnRefreshSched">🔄 تحديث</button>
+        <button class="btn btn-g btn-sm" id="btnDeleteAll" style="color:#ff6b6b;border-color:#ff444433">🗑️ حذف الكل</button>
+      </div>
+    </div>
+    <table class="sched-table">
+      <tr><th>التغريدة</th><th>موعد النشر</th><th>الحالة</th><th></th></tr>
+      ${SCHED_STATE.scheduled.map(t=>`<tr>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${escHtml(t.content.substring(0,70))}${t.content.length>70?'...':''}</td>
+        <td style="white-space:nowrap;color:#aaa;font-size:11px">${new Date(t.scheduled_at).toLocaleString('ar-SA',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+        <td><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${t.status==='pending'?'#1d9bf022':t.status==='posted'?'#00c89622':'#ff444422'};color:${t.status==='pending'?'#1d9bf0':t.status==='posted'?'#00c896':'#ff6b6b'}">${t.status==='pending'?'⏳ انتظار':t.status==='posted'?'✅ نُشرت':'❌ فشلت'}</span></td>
+        <td>${t.status==='pending'?`<button onclick="deleteSched(${t.id})" style="background:transparent;border:none;color:#ff6b6b;cursor:pointer;font-size:16px">✕</button>`:''}</td>
+      </tr>`).join('')}
+    </table>
+  </div>` : ''}`;
+}
+
+function bindSchedulePage(){
+  document.getElementById('schedNewTweet')?.addEventListener('input', e => SCHED_STATE.newTweet = e.target.value);
+
+  document.getElementById('btnAddTweet')?.addEventListener('click', ()=>{
+    const text = document.getElementById('schedNewTweet')?.value?.trim();
+    if(!text){ alert('اكتب تغريدة أولاً'); return; }
+    if(text.length > 280){ alert(`التغريدة تتجاوز 280 حرفاً (${text.length})`); return; }
+    SCHED_STATE.tweets.push(text);
+    SCHED_STATE.newTweet = '';
+    render();
+  });
+
+  document.getElementById('btnAddFromSaved')?.addEventListener('click', ()=>{
+    if(S.saved.length === 0){ alert('لا توجد تغريدات محفوظة'); return; }
+    // أضف كل المحفوظات الصالحة
+    let added = 0;
+    S.saved.forEach(s => {
+      if(s.text.length <= 280 && !SCHED_STATE.tweets.includes(s.text)){
+        SCHED_STATE.tweets.push(s.text);
+        added++;
+      }
+    });
+    alert(`✅ تم إضافة ${added} تغريدة من المحفوظات`);
+    render();
+  });
+
+  document.getElementById('btnSmartSchedule')?.addEventListener('click', async ()=>{
+    if(SCHED_STATE.tweets.length === 0){ alert('أضف تغريدات أولاً'); return; }
+    SCHED_STATE.loading = true;
+    render();
+    const startDate = new Date();
+    if(!SCHED_STATE.startToday) startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(0,0,0,0);
+    const r = await window.api.smartSchedule({
+      tweets: SCHED_STATE.tweets,
+      dailyCount: SCHED_STATE.dailyCount,
+      startDate: startDate.toISOString(),
+    });
+    if(r.success){
+      SCHED_STATE.tweets = [];
+      SCHED_STATE.newTweet = '';
+      await loadScheduledList();
+    } else {
+      alert('فشل الجدولة: ' + r.error);
+    }
+    SCHED_STATE.loading = false;
+    render();
+  });
+
+  document.getElementById('btnRefreshSched')?.addEventListener('click', async ()=>{
+    await loadScheduledList(); render();
+  });
+
+  document.getElementById('btnDeleteAll')?.addEventListener('click', async ()=>{
+    if(!confirm('حذف كل التغريدات المنتظرة؟')) return;
+    await window.api.deleteAllScheduled();
+    await loadScheduledList(); render();
+  });
+}
+
+async function loadScheduledList(){
+  SCHED_STATE.scheduled = await window.api.getScheduled();
+}
+
+async function deleteSched(id){
+  await window.api.deleteScheduled(id);
+  await loadScheduledList(); render();
+}
+
+
   // إزالة أي banner قديم
   document.getElementById('updateBanner')?.remove();
   const banner = document.createElement('div');
@@ -489,6 +788,9 @@ function render(){
   } else if(S.page==='seo'){
     app.innerHTML=renderSeoPage();
     bindSeoPage();
+  } else if(S.page==='schedule'){
+    loadScheduledList().then(()=>{ app.innerHTML=renderSchedulePage(); bindSchedulePage(); });
+    app.innerHTML='<div style="text-align:center;padding:40px;color:#6b7280"><span class="spin"></span> تحميل...</div>';
   }
 }
 
@@ -501,6 +803,7 @@ function renderHdr(){
     } else { st.innerHTML=''; }
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">🕐 جدولة</button>
       <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 SEO</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
@@ -699,8 +1002,18 @@ function bindS1(){
   });
 }
 
-// ── الخطوة 2: حفظ ونسخ (بدل النشر) ─────────────
+// ── الخطوة 2: النشر والحفظ ──────────────────────
 function renderS2(){
+  if(S.postResult) return `<div class="succ-copy">
+    <div class="succ-ic">${S.postResult.success ? '🎉' : '📋'}</div>
+    <div class="succ-t" style="color:${S.postResult.success?'#00c896':'#e8eaf0'}">${S.postResult.msg}</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:20px">${S.postResult.sub||''}</div>
+    <div class="succ-b">
+      <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="resetW()">+ تغريدة جديدة</button>
+      <button class="btn btn-g" style="width:auto;padding:10px 22px;background:#25D366;border-color:#25D366;color:#fff" onclick="openWhatsApp(S.tweet)">📲 واتساب</button>
+      <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="goPage('saved')">💾 المحفوظات</button>
+    </div>
+  </div>`;
   if(S.copySuccess) return `<div class="succ-copy">
     <div class="succ-ic">📋</div>
     <div class="succ-t">تم النسخ! الصقها في X</div>
@@ -709,12 +1022,11 @@ function renderS2(){
       <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="resetW()">+ تغريدة جديدة</button>
       <button class="btn btn-g" style="width:auto;padding:10px 22px;background:#25D366;border-color:#25D366;color:#fff" onclick="openWhatsApp(S.tweet)">📲 إرسال لواتساب</button>
       <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="goPage('saved')">💾 المحفوظات</button>
-      <button class="btn btn-g" style="width:auto;padding:10px 22px" onclick="openX()">فتح X ↗</button>
     </div>
   </div>`;
 
   const cc=S.tweet.length, overLimit=cc>280;
-  return `<div class="ptit">حفظ ونسخ التغريدة</div>
+  return `<div class="ptit">نشر التغريدة</div>
   <div style="background:#0d1421;border:1px solid #1a2540;border-radius:12px;padding:16px;margin-bottom:16px">
     ${S.prodImages.length > 0 ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -723,26 +1035,66 @@ function renderS2(){
     <div style="font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word">${escHtml(S.tweet)}</div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a2540;font-size:12px;color:${overLimit?'#ff4444':'#00c896'};font-weight:700">${cc}/280 حرف</div>
   </div>
-  ${S.prodImages.length > 0 ? `<div style="font-size:11px;color:#6b7280;margin-bottom:12px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 12px">💡 بعد النسخ افتح X والصق التغريدة ثم أضف الصور (${S.prodImages.length} صورة)</div>` : ''}
+  ${S.prodImages.length > 0 ? `<div style="font-size:11px;color:#6b7280;margin-bottom:10px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 12px">💡 بعد النشر أضف الصور يدوياً (${S.prodImages.length} صورة)</div>` : ''}
   ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
   <div style="display:flex;gap:10px;flex-direction:column">
-    <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ التغريدة للحافظة</button>
-    <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب الشخصي</button>
-    <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
-    <div style="display:flex;gap:10px">
-      <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
-  ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
-  <div style="display:flex;gap:10px;flex-direction:column">
-    <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ التغريدة للحافظة</button>
-    <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب الشخصي</button>
+    <button class="btn btn-p" id="btnPuppeteer" ${overLimit?'disabled':''} style="font-size:15px;padding:14px;background:linear-gradient(135deg,#7c3aed,#1d9bf0)">
+      🚀 نشر تلقائي عبر Chrome
+    </button>
+    <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ للحافظة (نشر يدوي)</button>
+    <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب</button>
     <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
     <div style="display:flex;gap:10px">
       <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
       <button class="btn btn-g" onclick="openX()">فتح X ↗</button>
     </div>
-  </div>`;
+  </div>
+  <div id="puppeteerStatus" style="display:none;margin-top:10px;text-align:center;font-size:13px;color:#1d9bf0"></div>`;
 }
 function bindS2(){
+  // نشر تلقائي بـ Puppeteer
+  document.getElementById('btnPuppeteer')?.addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnPuppeteer');
+    const status = document.getElementById('puppeteerStatus');
+    btn.disabled=true; btn.textContent='⏳ جاري فتح Chrome...';
+    status.style.display='block'; status.textContent='🔄 جاري التحقق من Chrome...';
+
+    // تحقق من Chrome
+    const chromeCheck = await window.api.checkChrome();
+    if(!chromeCheck.found){
+      btn.disabled=false; btn.textContent='🚀 نشر تلقائي عبر Chrome';
+      status.style.display='none';
+      alert('❌ Chrome غير موجود\n\nيرجى تثبيت Google Chrome أولاً من:\nhttps://www.google.com/chrome');
+      return;
+    }
+
+    status.textContent='🌐 فتح X...';
+    const result = await window.api.puppeteerPost({ content: S.tweet });
+
+    if(result.success){
+      S.postResult = { success: true, msg: '🎉 تم النشر بنجاح!', sub: 'تم النشر تلقائياً عبر Chrome' };
+      render();
+    } else if(result.error === 'LOGIN_REQUIRED'){
+      btn.disabled=false; btn.textContent='🚀 نشر تلقائي عبر Chrome';
+      status.style.display='none';
+      const doLogin = confirm('⚠️ يجب تسجيل الدخول في X أولاً\n\nهل تريد فتح Chrome لتسجيل الدخول؟');
+      if(doLogin){
+        status.style.display='block'; status.textContent='🔄 انتظر حتى تسجل الدخول في Chrome...';
+        const loginResult = await window.api.puppeteerLogin();
+        status.style.display='none';
+        if(loginResult.success){
+          alert(`✅ تم تسجيل الدخول بنجاح\nاضغط "نشر تلقائي" مجدداً`);
+        } else {
+          alert('❌ فشل تسجيل الدخول: ' + loginResult.error);
+        }
+      }
+    } else {
+      btn.disabled=false; btn.textContent='🚀 نشر تلقائي عبر Chrome';
+      status.style.display='none';
+      alert('❌ فشل النشر:\n' + result.error);
+    }
+  });
+
   document.getElementById('btnCopy')?.addEventListener('click', copyTweet);
   document.getElementById('btnWA')?.addEventListener('click', ()=> openWhatsApp(S.tweet));
   document.getElementById('btnSave')?.addEventListener('click', ()=>{
@@ -864,7 +1216,7 @@ async function logout(){
 
 function goStep(n){ S.step=n; render(); }
 function goPage(p){ S.page=p; render(); }
-function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; render(); }
+function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; S.postResult=null; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\n/g,'\\n'); }
 
