@@ -541,10 +541,9 @@ function renderS0(){
   <div class="card">
     <div class="ct">🌍 المنطقة</div>
     <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
-    <div class="ct" style="margin-top:12px">📱 المنصة</div>
+    <div class="ct" style="margin-bottom:8px">📱 المنصة</div>
     <div class="tabs">
-      <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 X (تويتر)</button>
-      <button class="tab ${S.platform==='youtube'?'active':''}" onclick="S.platform='youtube';S.trends=[];S.trendsReal=false;S.trendsError='';render()">▶️ يوتيوب</button>
+      <button class="tab active">🐦 X (تويتر)</button>
     </div>
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
