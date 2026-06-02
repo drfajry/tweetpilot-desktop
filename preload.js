@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('api', {
   checkUpdate:      ()       => ipcRenderer.invoke('check-update'),
   getVersion:       ()       => ipcRenderer.invoke('get-version'),
   openReleases:     ()       => ipcRenderer.invoke('open-releases'),
+  openExternal:     (url)    => ipcRenderer.invoke('open-external', url),
+  copyToClipboard:  (text)   => ipcRenderer.invoke('copy-to-clipboard', text),
   onUpdateAvailable:(cb)     => ipcRenderer.on('update-available',     (_, d) => cb(d)),
   onUpdateNotAvail: (cb)     => ipcRenderer.on('update-not-available', (_, d) => cb(d)),
   // Auth
