@@ -109,7 +109,7 @@ const S={
   region:'sa', platform:'x', trends:[], selTrends:[], trendsReal:false, trendsError:'',
   fixedTags:true,
   bsSrc:'amazon', products:[], prodSearch:'',
-  afUrl:'', prodDesc:'', prodImage:'', tone:'hype', category:'',
+  afUrl:'', prodDesc:'', prodImages:[], tone:'hype', category:'',
   tweet:'', saved:[],
   copySuccess:false,
 };
@@ -129,7 +129,10 @@ const PAYMENT_INFO = {
   price: 99,
 };
 
-function openWhatsApp(msg){ window.open(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank'); }
+// FIX #4: واتساب وX يفتحان في المتصفح الخارجي
+function openWhatsApp(msg){ window.api.openExternal(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(msg)}`); }
+function openX(){ window.api.openExternal('https://twitter.com/intent/tweet'); }
+function openXWith(text){ window.api.openExternal('https://twitter.com/intent/tweet?text='+encodeURIComponent(text)); }
 
 function buildOrderMsg(data){
   return `🛒 طلب شراء — ناشر\n\n` +
@@ -451,21 +454,24 @@ function renderS1(){
       <label>وصف المنتج (اختياري)</label>
       <input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${S.prodDesc}">
     </div>
-    ${S.prodImage ? `
+    ${S.prodImages.length > 0 ? `
     <div style="margin-top:4px">
-      <label>صورة المنتج</label>
-      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
-        <img src="${S.prodImage}" style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid #1a2540">
-        <div style="flex:1;font-size:12px;color:#6b7280">سيتم نسخ رابط الصورة مع التغريدة للصق يدوي في X</div>
-        <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="S.prodImage='';render()">✕ حذف</button>
+      <label>الصور المضافة (${S.prodImages.length}/4)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        ${S.prodImages.map((img,i)=>`
+          <div style="position:relative">
+            <img src="${img}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #1a2540">
+            <button onclick="S.prodImages.splice(${i},1);render()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+          </div>`).join('')}
       </div>
     </div>` : ''}
     <div style="margin-top:10px">
-      <label>أو ارفع صورة من جهازك</label>
-      <input type="file" id="imgUpload" accept="image/*" style="margin-top:6px;font-size:12px;padding:6px">
+      <label>${S.prodImages.length === 0 ? 'أو ارفع صورة من جهازك (حتى 4 صور)' : 'إضافة صورة أخرى'}</label>
+      <input type="file" id="imgUpload" accept="image/*" ${S.prodImages.length >= 4 ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px">
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-      <button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';S.prodImage='';render()" title="مسح وبدء من جديد">🗑️ مسح الكل</button>
+      <button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';S.prodImages=[];render()" title="مسح الكل">🗑️ مسح الكل</button>
+      ${S.prodImages.length > 0 ? `<button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px;color:#ff6b6b" onclick="S.prodImages=[];render()">🗑️ مسح الصور فقط</button>` : ''}
     </div>
   </div>
   <div class="card">
@@ -517,7 +523,8 @@ function bindS1(){
     btn.disabled=true; btn.textContent='⏳...';
     const r = await window.api.fetchProductImage(url);
     if(r.success){
-      S.prodImage = r.imageUrl;
+      if(S.prodImages.length < 4) S.prodImages.push(r.imageUrl);
+      // FIX #2: فقط نملأ الوصف إذا كان فارغاً — لا نمسح الرابط
       if(r.pageTitle && !S.prodDesc) S.prodDesc = r.pageTitle.substring(0,80);
     } else {
       alert('لم يتم العثور على صورة — يمكنك رفع صورة يدوياً');
@@ -525,13 +532,19 @@ function bindS1(){
     btn.disabled=false; btn.textContent='🖼️ جلب صورة';
     render();
   });
-  // رفع صورة يدوياً
+  // FIX #2: رفع صورة بدون مسح الرابط والوصف
   document.getElementById('imgUpload')?.addEventListener('change', (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev)=>{ S.prodImage = ev.target.result; render(); };
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      if(S.prodImages.length >= 4) return;
+      const reader = new FileReader();
+      reader.onload = (ev)=>{
+        S.prodImages.push(ev.target.result);
+        // FIX #2: لا نستدعي render() هنا — نحدث الصور فقط
+        render();
+      };
+      reader.readAsDataURL(file);
+    });
   });
 }
 
@@ -552,14 +565,23 @@ function renderS2(){
   const cc=S.tweet.length, overLimit=cc>280;
   return `<div class="ptit">حفظ ونسخ التغريدة</div>
   <div style="background:#0d1421;border:1px solid #1a2540;border-radius:12px;padding:16px;margin-bottom:16px">
-    ${S.prodImage?`<img src="${S.prodImage}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px">`:'' }
+    ${S.prodImages.length > 0 ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${S.prodImages.map(img=>`<img src="${img}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #1a2540">`).join('')}
+    </div>` : ''}
     <div style="font-size:14px;line-height:1.8;white-space:pre-wrap;word-break:break-word">${escHtml(S.tweet)}</div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a2540;font-size:12px;color:${overLimit?'#ff4444':'#00c896'};font-weight:700">${cc}/280 حرف</div>
   </div>
-  ${S.prodImage?`<div style="font-size:11px;color:#6b7280;margin-bottom:12px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 12px">💡 الصورة جاهزة — بعد النسخ افتح X والصق التغريدة ثم أضف الصورة يدوياً</div>`:''}
+  ${S.prodImages.length > 0 ? `<div style="font-size:11px;color:#6b7280;margin-bottom:12px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 12px">💡 بعد النسخ افتح X والصق التغريدة ثم أضف الصور (${S.prodImages.length} صورة)</div>` : ''}
   ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
   <div style="display:flex;gap:10px;flex-direction:column">
-    ${S.prodImage?`<button class="btn btn-g" id="btnCopyImg" style="font-size:13px;padding:10px">📸 نسخ رابط الصورة للحافظة</button>`:''}
+    <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ التغريدة للحافظة</button>
+    <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب الشخصي</button>
+    <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
+  ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
+  <div style="display:flex;gap:10px;flex-direction:column">
     <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ التغريدة للحافظة</button>
     <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب الشخصي</button>
     <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
@@ -570,18 +592,6 @@ function renderS2(){
   </div>`;
 }
 function bindS2(){
-  document.getElementById('btnCopyImg')?.addEventListener('click', async()=>{
-    if(!S.prodImage) return;
-    // إذا كانت data URL نخبر المستخدم بحفظها
-    if(S.prodImage.startsWith('data:')){
-      // نفتح الصورة في نافذة جديدة
-      const win = window.open();
-      win.document.write(`<img src="${S.prodImage}" style="max-width:100%">`);
-    } else {
-      await navigator.clipboard.writeText(S.prodImage);
-      alert('✅ تم نسخ رابط الصورة');
-    }
-  });
   document.getElementById('btnCopy')?.addEventListener('click', copyTweet);
   document.getElementById('btnWA')?.addEventListener('click', ()=> openWhatsApp(S.tweet));
   document.getElementById('btnSave')?.addEventListener('click', ()=>{
@@ -669,24 +679,29 @@ function updCC(n){
 
 async function copyTweet(){
   try {
-    await navigator.clipboard.writeText(S.tweet);
-    saveTweet(S.tweet); // يحفظ تلقائياً عند النسخ أيضاً
+    await window.api.copyToClipboard(S.tweet);
+    saveTweet(S.tweet);
     S.copySuccess=true; render();
-  } catch(e){ alert('فشل النسخ: '+e.message); }
+  } catch(e){
+    try { await navigator.clipboard.writeText(S.tweet); saveTweet(S.tweet); S.copySuccess=true; render(); }
+    catch(e2){ alert('فشل النسخ: '+e2.message); }
+  }
 }
 
 async function copySaved(text){
   try {
-    await navigator.clipboard.writeText(text);
-    // تأكيد بصري مؤقت
+    // FIX #3: استخدام Electron clipboard بدل navigator.clipboard
+    await window.api.copyToClipboard(text);
     const btn=event.target; btn.textContent='✅'; setTimeout(()=>btn.textContent='📋 نسخ',1500);
-  } catch(e){ alert('فشل النسخ'); }
+  } catch(e){
+    // fallback
+    try { await navigator.clipboard.writeText(text); }
+    catch(e2){ alert('فشل النسخ: '+e2.message); }
+  }
 }
 
-function openX(){ window.open('https://twitter.com/intent/tweet','_blank'); }
-function openXWith(text){
-  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text),'_blank');
-}
+
+
 
 function deleteSavedItem(id){ deleteSaved(id); render(); }
 
@@ -698,7 +713,7 @@ async function logout(){
 
 function goStep(n){ S.step=n; render(); }
 function goPage(p){ S.page=p; render(); }
-function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImage=''; S.copySuccess=false; render(); }
+function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\n/g,'\\n'); }
 
