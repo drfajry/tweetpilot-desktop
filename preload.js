@@ -18,12 +18,18 @@ contextBridge.exposeInMainWorld('api', {
   logout:           ()       => ipcRenderer.invoke('logout'),
   onAuthSuccess:    (cb)     => ipcRenderer.on('auth-success', (_, data) => cb(data)),
   onAuthError:      (cb)     => ipcRenderer.on('auth-error',   (_, err)  => cb(err)),
+  // Puppeteer
+  puppeteerPost:    (data)   => ipcRenderer.invoke('puppeteer-post', data),
+  puppeteerLogin:   ()       => ipcRenderer.invoke('puppeteer-login'),
+  checkChrome:      ()       => ipcRenderer.invoke('check-chrome'),
   // Tweet
   generateTweet:    (data)   => ipcRenderer.invoke('generate-tweet', data),
   postTweet:        (data)   => ipcRenderer.invoke('post-tweet', data),
   scheduleTweet:    (data)   => ipcRenderer.invoke('schedule-tweet', data),
+  smartSchedule:    (data)   => ipcRenderer.invoke('smart-schedule', data),
   getScheduled:     ()       => ipcRenderer.invoke('get-scheduled'),
   deleteScheduled:  (id)     => ipcRenderer.invoke('delete-scheduled', id),
+  deleteAllScheduled: ()     => ipcRenderer.invoke('delete-all-scheduled'),
   getHistory:       ()       => ipcRenderer.invoke('get-history'),
   fetchBestsellers: (data)   => ipcRenderer.invoke('fetch-bestsellers', data),
   fetchProductImage:(url)    => ipcRenderer.invoke('fetch-product-image', url),
