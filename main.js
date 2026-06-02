@@ -242,7 +242,124 @@ function fetchYoutubeTrends(region) {
   });
 }
 
-// ── النوافذ ───────────────────────────────────────
+// ── النشر بـ Puppeteer ────────────────────────────
+// يستخدم Chrome المثبت على الجهاز بدل تحميل Chromium منفصل
+function getChromePath() {
+  const paths = [
+    // Windows
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+    // Mac
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    // Linux
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+  ];
+  const fs = require('fs');
+  for (const p of paths) {
+    try { if (fs.existsSync(p)) return p; } catch(e){}
+  }
+  return null;
+}
+
+async function postWithPuppeteer(content) {
+  const puppeteer = require('puppeteer-core');
+  const chromePath = getChromePath();
+  if (!chromePath) {
+    return { success: false, error: 'لم يتم العثور على Chrome — يرجى تثبيت Google Chrome أولاً' };
+  }
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      executablePath: chromePath,
+      headless: false, // نعرض المتصفح للمستخدم لتسجيل الدخول
+      userDataDir: path.join(app.getPath('userData'), 'chrome-profile'), // نحفظ الجلسة
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+
+    // افتح X
+    await page.goto('https://x.com/compose/post', { waitUntil: 'networkidle2', timeout: 30000 });
+
+    // تحقق من تسجيل الدخول
+    const isLoggedIn = await page.evaluate(() => {
+      return !document.querySelector('[data-testid="loginButton"]');
+    });
+
+    if (!isLoggedIn) {
+      // أغلق المتصفح وأخبر المستخدم بتسجيل الدخول
+      await browser.close();
+      return { success: false, error: 'LOGIN_REQUIRED' };
+    }
+
+    // انتظر مربع التغريدة
+    await page.waitForSelector('[data-testid="tweetTextarea_0"]', { timeout: 10000 });
+
+    // اكتب التغريدة
+    await page.click('[data-testid="tweetTextarea_0"]');
+    await page.keyboard.type(content, { delay: 30 });
+
+    // انتظر قليلاً
+    await new Promise(r => setTimeout(r, 1000));
+
+    // تحقق من عداد الحروف
+    const charCount = await page.evaluate(() => {
+      const counter = document.querySelector('[data-testid="tweetButton"] + * .css-1jxf684');
+      return counter ? parseInt(counter.textContent) : null;
+    });
+
+    // اضغط نشر
+    await page.waitForSelector('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]', { timeout: 5000 });
+    await page.click('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]');
+
+    // انتظر تأكيد النشر
+    await new Promise(r => setTimeout(r, 3000));
+
+    await browser.close();
+    return { success: true };
+
+  } catch(e) {
+    try { await browser?.close(); } catch(_) {}
+    return { success: false, error: e.message };
+  }
+}
+
+// فتح Chrome لتسجيل الدخول في X
+async function openChromeForLogin() {
+  const puppeteer = require('puppeteer-core');
+  const chromePath = getChromePath();
+  if (!chromePath) return { success: false, error: 'Chrome غير موجود' };
+
+  const browser = await puppeteer.launch({
+    executablePath: chromePath,
+    headless: false,
+    userDataDir: path.join(app.getPath('userData'), 'chrome-profile'),
+    args: ['--no-sandbox'],
+  });
+
+  const page = await browser.newPage();
+  await page.goto('https://x.com/login', { waitUntil: 'networkidle2' });
+
+  // انتظر حتى يسجل المستخدم الدخول
+  try {
+    await page.waitForSelector('[data-testid="SideNav_AccountSwitcher_Button"]', { timeout: 120000 });
+    const username = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"] span');
+      return el?.textContent || '';
+    });
+    await browser.close();
+    return { success: true, username };
+  } catch(e) {
+    await browser.close();
+    return { success: false, error: 'انتهت المهلة — حاول مجدداً' };
+  }
+}
+
+
 let mainWindow;
 
 function createMainWindow() {
@@ -470,6 +587,25 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
   return { success: true, tweet, charCount: tweet.length };
 });
 
+// ── النشر بـ Puppeteer ────────────────────────────
+ipcMain.handle('puppeteer-post', async (_, { content }) => {
+  if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً` };
+  const result = await postWithPuppeteer(content);
+  if (result.success) {
+    db.prepare('INSERT INTO tweet_history (content, tweet_id, status) VALUES (?,?,?)').run(content, '', 'posted');
+  }
+  return result;
+});
+
+ipcMain.handle('puppeteer-login', async () => {
+  return await openChromeForLogin();
+});
+
+ipcMain.handle('check-chrome', () => {
+  const path = getChromePath();
+  return { found: !!path, path };
+});
+
 ipcMain.handle('post-tweet', async (_, { content }) => {
   if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً (${content.length})` };
   try {
@@ -490,12 +626,62 @@ ipcMain.handle('schedule-tweet', (_, { content, scheduledAt }) => {
   return { success: true, id: r.lastInsertRowid };
 });
 
+// ── الجدولة الذكية ────────────────────────────────
+// أفضل أوقات النشر على X (بتوقيت السعودية UTC+3)
+const SMART_TIMES = {
+  1: ['20:00'],                              // مرة واحدة — المساء
+  2: ['09:00', '20:00'],                     // مرتين — صباح ومساء
+  3: ['09:00', '14:00', '20:00'],            // ثلاث — صباح وظهر ومساء
+  4: ['08:00', '12:00', '17:00', '21:00'],   // أربع
+  5: ['08:00', '11:00', '14:00', '18:00', '21:00'], // خمس
+};
+
+ipcMain.handle('smart-schedule', (_, { tweets, dailyCount, startDate }) => {
+  // tweets: مصفوفة نصوص التغريدات
+  // dailyCount: عدد التغريدات يومياً
+  // startDate: تاريخ البداية (اليوم أو غداً)
+
+  const times = SMART_TIMES[dailyCount] || SMART_TIMES[3];
+  const results = [];
+  let tweetIndex = 0;
+  let dayOffset = 0;
+
+  while (tweetIndex < tweets.length) {
+    for (const time of times) {
+      if (tweetIndex >= tweets.length) break;
+      const [hours, minutes] = time.split(':').map(Number);
+
+      // حساب التاريخ والوقت
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + dayOffset);
+      date.setHours(hours - 3, minutes, 0, 0); // تحويل من UTC+3 إلى UTC
+
+      const content = tweets[tweetIndex];
+      if (content.length <= 280) {
+        const r = db.prepare('INSERT INTO scheduled_tweets (content, scheduled_at) VALUES (?,?)')
+          .run(content, date.toISOString());
+        results.push({ id: r.lastInsertRowid, scheduledAt: date.toISOString(), content });
+      }
+      tweetIndex++;
+    }
+    dayOffset++;
+  }
+
+  mainWindow?.webContents.send('scheduled-posted', {});
+  return { success: true, scheduled: results };
+});
+
 ipcMain.handle('get-scheduled', () => {
-  return db.prepare('SELECT * FROM scheduled_tweets ORDER BY scheduled_at DESC LIMIT 50').all();
+  return db.prepare('SELECT * FROM scheduled_tweets ORDER BY scheduled_at ASC LIMIT 100').all();
 });
 
 ipcMain.handle('delete-scheduled', (_, id) => {
   db.prepare('DELETE FROM scheduled_tweets WHERE id=?').run(id);
+  return { success: true };
+});
+
+ipcMain.handle('delete-all-scheduled', () => {
+  db.prepare("DELETE FROM scheduled_tweets WHERE status='pending'").run();
   return { success: true };
 });
 
