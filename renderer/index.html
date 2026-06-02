@@ -142,6 +142,7 @@ function buildOrderMsg(data){
 }
 
 
+async function init(){
   // أولاً: تحقق من الترخيص
   const lic = await window.api.checkLicense();
   if (!lic.valid) {
