@@ -203,7 +203,151 @@ async function activateLicense(){
   }
 }
 
-// ── صفحة الدفع ────────────────────────────────────
+// ── صفحة SEO يوتيوب ──────────────────────────────
+const SEO_STATE = { title:'', trends:[], result:null, loading:false, copied:false };
+
+function renderSeoPage(){
+  const r = SEO_STATE.result;
+  return `<div class="ptit">📈 SEO يوتيوب</div>
+  <div class="psub">اكتب عنوان المنتج واختر ترنداً لتوليد محتوى SEO محسّن</div>
+
+  <div class="card">
+    <div class="ct">🎯 عنوان المنتج أو الفيديو</div>
+    <div class="f">
+      <input id="seoTitle" placeholder="مثل: سماعات AirPods Pro لاسلكية بتخفيض 40%" value="${SEO_STATE.title}">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">📱 جلب ترندات يوتيوب للإلهام</div>
+    <div class="tabs">
+      ${[{k:'sa',l:'🇸🇦 السعودية'},{k:'ae',l:'🇦🇪 الإمارات'},{k:'eg',l:'🇪🇬 مصر'},{k:'world',l:'🌍 العالم'}]
+        .map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}'">${r.l}</button>`).join('')}
+    </div>
+    <button class="btn btn-g" id="btnSeoTrends" style="width:auto;padding:8px 18px;font-size:13px">▶️ جلب ترندات يوتيوب</button>
+    ${SEO_STATE.trends.length ? `
+    <div style="margin-top:12px">
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px">اختر ترنداً لإضافته للعنوان (اختياري):</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px">
+        ${SEO_STATE.trends.map((t,i)=>`
+          <span onclick="addTrendToTitle(${i})" style="padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:1px solid #1a2540;background:#0d1421;color:#aaa;transition:all .2s"
+            onmouseover="this.style.borderColor='#1d9bf0';this.style.color='#1d9bf0'"
+            onmouseout="this.style.borderColor='#1a2540';this.style.color='#aaa'">
+            ${t.title || t.name}
+          </span>`).join('')}
+      </div>
+    </div>` : ''}
+  </div>
+
+  <button class="btn btn-pu" id="btnGenSeo" style="margin-bottom:16px;font-size:15px;padding:13px" ${SEO_STATE.loading?'disabled':''}>
+    ${SEO_STATE.loading ? '<span class="spin"></span> جاري التوليد...' : '✨ توليد محتوى SEO'}
+  </button>
+
+  ${r ? `
+  <div class="card">
+    <div class="ct">📋 النتيجة — انقر على أي قسم لنسخه</div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ العنوان المحسّن (SEO Title)</div>
+      <div onclick="copySection('seoResTitle')" id="seoResTitle" style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:14px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='#1d9bf0'" onmouseout="this.style.borderColor='#1a2540'">
+        ${escHtml(r.title)}
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">📝 الوصف (Description)</div>
+      <div onclick="copySection('seoResDesc')" id="seoResDesc" style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:13px;line-height:1.8;cursor:pointer;white-space:pre-wrap;transition:border-color .2s" onmouseover="this.style.borderColor='#1d9bf0'" onmouseout="this.style.borderColor='#1a2540'">
+        ${escHtml(r.description)}
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ الهاشتاقات والكلمات المفتاحية</div>
+      <div onclick="copySection('seoResTags')" id="seoResTags" style="background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:12px;font-size:13px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='#1d9bf0'" onmouseout="this.style.borderColor='#1a2540'">
+        ${escHtml(r.tags)}
+      </div>
+    </div>
+
+    <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ الكل</button>
+  </div>` : ''}`;
+}
+
+function bindSeoPage(){
+  document.getElementById('seoTitle')?.addEventListener('input', e => SEO_STATE.title = e.target.value);
+  document.getElementById('btnSeoTrends')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnSeoTrends');
+    btn.disabled=true; btn.textContent='⏳...';
+    const r = await window.api.fetchTrends({ region: S.region, platform: 'youtube' });
+    if(r.success) SEO_STATE.trends = r.trends;
+    btn.disabled=false; btn.textContent='▶️ جلب ترندات يوتيوب';
+    render();
+  });
+  document.getElementById('btnGenSeo')?.addEventListener('click', generateSeo);
+}
+
+window.addTrendToTitle = (i) => {
+  const t = SEO_STATE.trends[i];
+  if(!t) return;
+  const titleEl = document.getElementById('seoTitle');
+  const add = t.title || t.name.replace('#','');
+  SEO_STATE.title = (SEO_STATE.title + ' ' + add).trim();
+  if(titleEl) titleEl.value = SEO_STATE.title;
+};
+
+async function generateSeo(){
+  const title = document.getElementById('seoTitle')?.value?.trim() || SEO_STATE.title;
+  if(!title){ alert('أدخل عنوان المنتج أولاً'); return; }
+  SEO_STATE.title = title;
+  SEO_STATE.loading = true;
+  render();
+
+  // توليد SEO محلياً بدون API
+  const trendNames = SEO_STATE.trends.slice(0,5).map(t => t.title || t.name.replace('#','')).join('، ');
+
+  const CATEGORIES_AR = { electronics:'إلكترونيات', fashion:'موضة', food:'طعام', beauty:'جمال وعناية', home:'منزل وديكور' };
+  const cat = CATEGORIES_AR[S.category] || 'منتجات';
+
+  // عنوان SEO محسّن
+  const seoTitle = `${title} | أفضل سعر 2025 | تسوق الآن`;
+
+  // وصف محسّن
+  const desc = `🔥 ${title}\n\n` +
+    `هل تبحث عن ${title}؟ وجدنا لك أفضل عرض متاح الآن بسعر لا يُصدق!\n\n` +
+    `✅ جودة عالية مضمونة\n` +
+    `✅ شحن سريع لجميع المناطق\n` +
+    `✅ أفضل سعر في السوق\n` +
+    `✅ ضمان وإرجاع مجاني\n\n` +
+    `${trendNames ? `🔗 مرتبط بـ: ${trendNames}\n\n` : ''}` +
+    `لا تفوت هذا العرض — الكمية محدودة! 🚨`;
+
+  // هاشتاقات وكلمات مفتاحية
+  const baseKeywords = title.split(' ').filter(w => w.length > 2).map(w => `#${w}`).join(' ');
+  const tags = `${baseKeywords} #${cat} #تسوق #عروض #تخفيضات #أفضل_سعر #تسوق_اونلاين #السعودية #فيصل_يختار`;
+
+  SEO_STATE.result = { title: seoTitle, description: desc, tags };
+  SEO_STATE.loading = false;
+  render();
+}
+
+window.copySection = async (id) => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const text = el.innerText;
+  await window.api.copyToClipboard(text);
+  el.style.borderColor = '#00c896';
+  el.style.background = '#00c89608';
+  setTimeout(()=>{ el.style.borderColor='#1a2540'; el.style.background='#0a0f1a'; }, 1500);
+};
+
+async function copyAllSeo(){
+  const r = SEO_STATE.result;
+  if(!r) return;
+  const all = `العنوان:\n${r.title}\n\nالوصف:\n${r.description}\n\nالهاشتاقات:\n${r.tags}`;
+  await window.api.copyToClipboard(all);
+  alert('✅ تم نسخ كل المحتوى');
+}
+
+
 function showUpdateBanner(data){
   // إزالة أي banner قديم
   document.getElementById('updateBanner')?.remove();
@@ -342,6 +486,9 @@ function render(){
   } else if(S.page==='saved'){
     app.innerHTML=renderSavedPage();
     bindSavedPage();
+  } else if(S.page==='seo'){
+    app.innerHTML=renderSeoPage();
+    bindSeoPage();
   }
 }
 
@@ -354,6 +501,7 @@ function renderHdr(){
     } else { st.innerHTML=''; }
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 SEO</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
       <div class="ubadge"><span class="uname">@${S.user.username}</span></div>
@@ -524,23 +672,27 @@ function bindS1(){
     const r = await window.api.fetchProductImage(url);
     if(r.success){
       if(S.prodImages.length < 4) S.prodImages.push(r.imageUrl);
-      // FIX #2: فقط نملأ الوصف إذا كان فارغاً — لا نمسح الرابط
       if(r.pageTitle && !S.prodDesc) S.prodDesc = r.pageTitle.substring(0,80);
     } else {
       alert('لم يتم العثور على صورة — يمكنك رفع صورة يدوياً');
     }
+    // احفظ وصف المنتج قبل render
+    const currentDesc = document.getElementById('prodDesc')?.value;
+    if(currentDesc) S.prodDesc = currentDesc;
     btn.disabled=false; btn.textContent='🖼️ جلب صورة';
     render();
   });
   // FIX #2: رفع صورة بدون مسح الرابط والوصف
   document.getElementById('imgUpload')?.addEventListener('change', (e)=>{
+    // احفظ قيم الحقول قبل render
+    S.afUrl = document.getElementById('afUrl')?.value || S.afUrl;
+    S.prodDesc = document.getElementById('prodDesc')?.value || S.prodDesc;
     const files = Array.from(e.target.files || []);
     files.forEach(file => {
       if(S.prodImages.length >= 4) return;
       const reader = new FileReader();
       reader.onload = (ev)=>{
         S.prodImages.push(ev.target.result);
-        // FIX #2: لا نستدعي render() هنا — نحدث الصور فقط
         render();
       };
       reader.readAsDataURL(file);
