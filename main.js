@@ -274,51 +274,123 @@ async function postWithPuppeteer(content) {
   try {
     browser = await puppeteer.launch({
       executablePath: chromePath,
-      headless: false, // نعرض المتصفح للمستخدم لتسجيل الدخول
-      userDataDir: path.join(app.getPath('userData'), 'chrome-profile'), // نحفظ الجلسة
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: false,
+      userDataDir: path.join(app.getPath('userData'), 'chrome-profile'),
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized'],
     });
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
 
     // افتح X
-    await page.goto('https://x.com/compose/post', { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto('https://x.com/home', { waitUntil: 'networkidle2', timeout: 30000 });
 
     // تحقق من تسجيل الدخول
     const isLoggedIn = await page.evaluate(() => {
-      return !document.querySelector('[data-testid="loginButton"]');
+      return !!document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]') ||
+             !!document.querySelector('[data-testid="AppTabBar_Home_Link"]');
     });
 
     if (!isLoggedIn) {
-      // أغلق المتصفح وأخبر المستخدم بتسجيل الدخول
       await browser.close();
       return { success: false, error: 'LOGIN_REQUIRED' };
     }
 
-    // انتظر مربع التغريدة
-    await page.waitForSelector('[data-testid="tweetTextarea_0"]', { timeout: 10000 });
+    // انتظر صندوق التغريدة الرئيسي
+    const textboxSelectors = [
+      '[data-testid="tweetTextarea_0"]',
+      '.public-DraftEditor-content',
+      '[data-testid="tweetTextarea_0_label"]',
+      'div[aria-label="Post text"]',
+      'div[aria-label="Tweet text"]',
+      'div[role="textbox"]',
+    ];
+
+    let textbox = null;
+    for (const sel of textboxSelectors) {
+      try {
+        await page.waitForSelector(sel, { timeout: 5000 });
+        textbox = sel;
+        break;
+      } catch(e) {}
+    }
+
+    // إذا ما وجد صندوق مباشرة — اضغط زر التغريدة
+    if (!textbox) {
+      const composeSelectors = [
+        'a[data-testid="SideNav_NewTweet_Button"]',
+        '[data-testid="FloatingActionButtons_Tweet"]',
+        'a[href="/compose/post"]',
+      ];
+      for (const sel of composeSelectors) {
+        try {
+          await page.click(sel);
+          await new Promise(r => setTimeout(r, 1500));
+          break;
+        } catch(e) {}
+      }
+
+      // حاول مجدداً بعد فتح نافذة الكتابة
+      for (const sel of textboxSelectors) {
+        try {
+          await page.waitForSelector(sel, { timeout: 5000 });
+          textbox = sel;
+          break;
+        } catch(e) {}
+      }
+    }
+
+    if (!textbox) {
+      await browser.close();
+      return { success: false, error: 'تعذر العثور على صندوق الكتابة في X — قد يكون التصميم تغيّر' };
+    }
 
     // اكتب التغريدة
-    await page.click('[data-testid="tweetTextarea_0"]');
-    await page.keyboard.type(content, { delay: 30 });
+    await page.click(textbox);
+    await new Promise(r => setTimeout(r, 500));
 
-    // انتظر قليلاً
+    // امسح أي نص موجود ثم اكتب
+    await page.keyboard.down('Control');
+    await page.keyboard.press('a');
+    await page.keyboard.up('Control');
+    await page.keyboard.press('Backspace');
+
+    // اكتب بشكل بطيء لتجنب الحجب
+    for (const char of content) {
+      await page.keyboard.type(char, { delay: 20 });
+    }
+
     await new Promise(r => setTimeout(r, 1000));
 
-    // تحقق من عداد الحروف
-    const charCount = await page.evaluate(() => {
-      const counter = document.querySelector('[data-testid="tweetButton"] + * .css-1jxf684');
-      return counter ? parseInt(counter.textContent) : null;
-    });
+    // اضغط زر النشر
+    const postSelectors = [
+      '[data-testid="tweetButton"]',
+      '[data-testid="tweetButtonInline"]',
+      'button[data-testid="tweetButton"]',
+    ];
 
-    // اضغط نشر
-    await page.waitForSelector('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]', { timeout: 5000 });
-    await page.click('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]');
+    let posted = false;
+    for (const sel of postSelectors) {
+      try {
+        const btn = await page.$(sel);
+        if (btn) {
+          const disabled = await page.evaluate(el => el.disabled || el.getAttribute('aria-disabled') === 'true', btn);
+          if (!disabled) {
+            await btn.click();
+            posted = true;
+            break;
+          }
+        }
+      } catch(e) {}
+    }
+
+    if (!posted) {
+      await browser.close();
+      return { success: false, error: 'تعذر الضغط على زر النشر' };
+    }
 
     // انتظر تأكيد النشر
     await new Promise(r => setTimeout(r, 3000));
-
     await browser.close();
     return { success: true };
 
