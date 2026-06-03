@@ -243,421 +243,124 @@ function fetchYoutubeTrends(region) {
 }
 
 // ── النشر بـ Puppeteer ────────────────────────────
-// يستخدم Chrome المثبت على الجهاز بدل تحميل Chromium منفصل
 function getChromePath() {
   const paths = [
-    // Windows
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
-    // Mac
+    (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    // Linux
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
   ];
   const fs = require('fs');
   for (const p of paths) {
-    try { if (fs.existsSync(p)) return p; } catch(e){}
+    try { if (p && fs.existsSync(p)) return p; } catch(e){}
   }
   return null;
 }
 
-async function postWithPuppeteer(content) {
-  const puppeteer = require('puppeteer-core');
+async function launchChromeWithDebugging() {
+  const { spawn } = require('child_process');
   const chromePath = getChromePath();
-  if (!chromePath) {
-    return { success: false, error: 'لم يتم العثور على Chrome — يرجى تثبيت Google Chrome أولاً' };
-  }
+  if (!chromePath) return null;
+  const userDataDir = path.join(app.getPath('userData'), 'chrome-nashir');
+  spawn(chromePath, [
+    '--remote-debugging-port=9222',
+    `--user-data-dir=${userDataDir}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    'https://x.com',
+  ], { detached: true, stdio: 'ignore' });
+  await new Promise(r => setTimeout(r, 4000));
+}
 
-  let browser;
+async function connectToChrome() {
+  const puppeteer = require('puppeteer-core');
   try {
-    browser = await puppeteer.launch({
-      executablePath: chromePath,
-      headless: false,
-      userDataDir: path.join(app.getPath('userData'), 'chrome-profile'),
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized'],
-    });
+    await fetch('http://localhost:9222/json/version');
+    return await puppeteer.connect({ browserURL: 'http://localhost:9222', defaultViewport: null });
+  } catch(e) { return null; }
+}
 
+async function postWithPuppeteer(content) {
+  const chromePath = getChromePath();
+  if (!chromePath) return { success: false, error: 'لم يتم العثور على Chrome' };
+
+  let browser = await connectToChrome();
+  if (!browser) {
+    await launchChromeWithDebugging();
+    browser = await connectToChrome();
+  }
+  if (!browser) return { success: false, error: 'تعذر فتح Chrome — أغلق Chrome وحاول مجدداً' };
+
+  try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 900 });
-
-    // افتح X
     await page.goto('https://x.com/home', { waitUntil: 'networkidle2', timeout: 30000 });
 
-    // تحقق من تسجيل الدخول
-    const isLoggedIn = await page.evaluate(() => {
-      return !!document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]') ||
-             !!document.querySelector('[data-testid="AppTabBar_Home_Link"]');
-    });
+    const isLoggedIn = await page.evaluate(() =>
+      !!document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]') ||
+      !!document.querySelector('[data-testid="AppTabBar_Home_Link"]')
+    );
+    if (!isLoggedIn) { await page.close(); return { success: false, error: 'LOGIN_REQUIRED' }; }
 
-    if (!isLoggedIn) {
-      await browser.close();
-      return { success: false, error: 'LOGIN_REQUIRED' };
+    // اضغط زر التغريدة
+    for (const sel of ['a[data-testid="SideNav_NewTweet_Button"]','[data-testid="FloatingActionButtons_Tweet"]','a[href="/compose/post"]']) {
+      try { await page.click(sel); break; } catch(e) {}
     }
+    await new Promise(r => setTimeout(r, 2000));
 
-    // انتظر صندوق التغريدة الرئيسي
-    const textboxSelectors = [
-      '[data-testid="tweetTextarea_0"]',
-      '.public-DraftEditor-content',
-      '[data-testid="tweetTextarea_0_label"]',
-      'div[aria-label="Post text"]',
-      'div[aria-label="Tweet text"]',
-      'div[role="textbox"]',
-    ];
-
+    // انتظر صندوق الكتابة
     let textbox = null;
-    for (const sel of textboxSelectors) {
-      try {
-        await page.waitForSelector(sel, { timeout: 5000 });
-        textbox = sel;
-        break;
-      } catch(e) {}
+    for (const sel of ['[data-testid="tweetTextarea_0"]','.public-DraftEditor-content','div[aria-label="Post text"]','div[role="textbox"]']) {
+      try { await page.waitForSelector(sel, { timeout: 5000 }); textbox = sel; break; } catch(e) {}
     }
-
-    // إذا ما وجد صندوق مباشرة — اضغط زر التغريدة
-    if (!textbox) {
-      const composeSelectors = [
-        'a[data-testid="SideNav_NewTweet_Button"]',
-        '[data-testid="FloatingActionButtons_Tweet"]',
-        'a[href="/compose/post"]',
-      ];
-      for (const sel of composeSelectors) {
-        try {
-          await page.click(sel);
-          await new Promise(r => setTimeout(r, 1500));
-          break;
-        } catch(e) {}
-      }
-
-      // حاول مجدداً بعد فتح نافذة الكتابة
-      for (const sel of textboxSelectors) {
-        try {
-          await page.waitForSelector(sel, { timeout: 5000 });
-          textbox = sel;
-          break;
-        } catch(e) {}
-      }
-    }
-
-    if (!textbox) {
-      await browser.close();
-      return { success: false, error: 'تعذر العثور على صندوق الكتابة في X — قد يكون التصميم تغيّر' };
-    }
+    if (!textbox) { await page.close(); return { success: false, error: 'تعذر العثور على صندوق الكتابة' }; }
 
     // اكتب التغريدة
     await page.click(textbox);
     await new Promise(r => setTimeout(r, 500));
-
-    // امسح أي نص موجود ثم اكتب
-    await page.keyboard.down('Control');
-    await page.keyboard.press('a');
-    await page.keyboard.up('Control');
+    await page.keyboard.down('Control'); await page.keyboard.press('a'); await page.keyboard.up('Control');
     await page.keyboard.press('Backspace');
-
-    // اكتب بشكل بطيء لتجنب الحجب
-    for (const char of content) {
-      await page.keyboard.type(char, { delay: 20 });
-    }
-
+    for (const char of content) await page.keyboard.type(char, { delay: 15 });
     await new Promise(r => setTimeout(r, 1000));
 
-    // اضغط زر النشر
-    const postSelectors = [
-      '[data-testid="tweetButton"]',
-      '[data-testid="tweetButtonInline"]',
-      'button[data-testid="tweetButton"]',
-    ];
-
-    let posted = false;
-    for (const sel of postSelectors) {
+    // اضغط نشر
+    for (const sel of ['[data-testid="tweetButton"]','[data-testid="tweetButtonInline"]']) {
       try {
         const btn = await page.$(sel);
         if (btn) {
           const disabled = await page.evaluate(el => el.disabled || el.getAttribute('aria-disabled') === 'true', btn);
-          if (!disabled) {
-            await btn.click();
-            posted = true;
-            break;
-          }
+          if (!disabled) { await btn.click(); break; }
         }
       } catch(e) {}
     }
 
-    if (!posted) {
-      await browser.close();
-      return { success: false, error: 'تعذر الضغط على زر النشر' };
-    }
-
-    // انتظر تأكيد النشر
     await new Promise(r => setTimeout(r, 3000));
-    await browser.close();
+    await page.close();
     return { success: true };
-
   } catch(e) {
-    try { await browser?.close(); } catch(_) {}
     return { success: false, error: e.message };
   }
 }
 
-// فتح Chrome لتسجيل الدخول في X
 async function openChromeForLogin() {
-  const puppeteer = require('puppeteer-core');
   const chromePath = getChromePath();
   if (!chromePath) return { success: false, error: 'Chrome غير موجود' };
-
-  const browser = await puppeteer.launch({
-    executablePath: chromePath,
-    headless: false,
-    userDataDir: path.join(app.getPath('userData'), 'chrome-profile'),
-    args: ['--no-sandbox'],
-  });
-
+  await launchChromeWithDebugging();
+  const browser = await connectToChrome();
+  if (!browser) return { success: false, error: 'تعذر فتح Chrome' };
   const page = await browser.newPage();
   await page.goto('https://x.com/login', { waitUntil: 'networkidle2' });
-
-  // انتظر حتى يسجل المستخدم الدخول
   try {
     await page.waitForSelector('[data-testid="SideNav_AccountSwitcher_Button"]', { timeout: 120000 });
-    const username = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"] span');
-      return el?.textContent || '';
-    });
-    await browser.close();
-    return { success: true, username };
-  } catch(e) {
-    await browser.close();
-    return { success: false, error: 'انتهت المهلة — حاول مجدداً' };
-  }
-}
-
-
-let mainWindow;
-
-function createMainWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1100, height: 780, minWidth: 900, minHeight: 650,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-    title: 'ناشر',
-    backgroundColor: '#070b14',
-    icon: path.join(__dirname, 'renderer', 'icon.ico'),
-  });
-  mainWindow.loadFile('renderer/index.html');
-  mainWindow.setMenuBarVisibility(false);
-}
-
-// ── IPC Handlers ──────────────────────────────────
-ipcMain.handle('check-update', async () => {
-  await checkForUpdates(false);
-  return { version: APP_VERSION };
-});
-
-ipcMain.handle('get-version', () => ({ version: APP_VERSION }));
-
-ipcMain.handle('open-external', (_, url) => {
-  shell.openExternal(url);
-});
-
-ipcMain.handle('copy-to-clipboard', (_, text) => {
-  const { clipboard } = require('electron');
-  clipboard.writeText(text);
-  return true;
-});
-
-ipcMain.handle('open-releases', () => {
-  shell.openExternal('https://github.com/drfajry/tweetpilot-desktop/releases/latest');
-});
-
-ipcMain.handle('verify-license', async (_, code) => {
-  const result = await verifyLicense(code);
-  if (result.valid) {
-    // احفظ الكود محلياً (في جدول auth سطر id=2)
-    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image) VALUES (2, ?, ?, '')`)
-      .run(code, result.plan || 'active');
-  }
-  return result;
-});
-
-ipcMain.handle('check-license', async () => {
-  const valid = await checkStoredLicense();
-  return { valid };
-});
-
-ipcMain.handle('get-auth', async () => {
-  const row = db.prepare('SELECT * FROM auth WHERE id=1').get();
-  if (row) return row;
-  try {
-    const client = getClient();
-    const me = await client.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
-    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image)
-      VALUES (1, ?, ?, ?)`).run(me.data.username, me.data.name, me.data.profile_image_url || '');
-    return db.prepare('SELECT * FROM auth WHERE id=1').get();
-  } catch(e) {
-    return null;
-  }
-});
-
-ipcMain.handle('start-oauth', async () => {
-  try {
-    const client = getClient();
-    const me = await client.v2.me({ 'user.fields': ['profile_image_url', 'name'] });
-    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image)
-      VALUES (1, ?, ?, ?)`).run(me.data.username, me.data.name, me.data.profile_image_url || '');
-    mainWindow?.webContents.send('auth-success', {
-      username: me.data.username,
-      profile_image: me.data.profile_image_url || '',
-    });
+    await page.close();
     return { success: true };
   } catch(e) {
-    mainWindow?.webContents.send('auth-error', e.message);
-    return { success: false, error: e.message };
+    await page.close();
+    return { success: false, error: 'انتهت المهلة' };
   }
-});
+}
 
-ipcMain.handle('logout', () => {
-  db.prepare('DELETE FROM auth WHERE id=1').run();
-  return true;
-});
-
-ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, fixedTags, category }) => {
-
-  // قوالب عامة
-  const TEMPLATES_GENERAL = {
-    hype: [
-      `🔥 لا تفوتك هذه الفرصة! {product} بسعر خيالي لن تصدقه\nاطلبه الآن قبل نفاد الكمية 👇\n{url}\n{trends}`,
-      `⚡️ عرض انفجاري على {product}!\nهذا هو الوقت المثالي للشراء 🛒\n{url}\n{trends}`,
-      `🚀 من يبحث عن {product} هذا هو الرابط الذهبي\nالسعر مش هيتكرر! 💥\n{url}\n{trends}`,
-      `🎯 توقف! شوف {product} بهالسعر\nفرصة ما تتكرر كل يوم ⬇️\n{url}\n{trends}`,
-    ],
-    informative: [
-      `📊 إذا كنت تبحث عن {product} فهذا أفضل خيار متاح الآن\nجودة عالية وسعر منافس ✅\n{url}\n{trends}`,
-      `💡 نصيحة لمن يريد {product}: هذا المنتج حصل على أعلى التقييمات\nجربه بنفسك 👇\n{url}\n{trends}`,
-      `🔍 بحثت كثيراً وهذا أفضل {product} بالسوق الآن\nالمواصفات والسعر لا يُقارنان 📌\n{url}\n{trends}`,
-    ],
-    funny: [
-      `😂 محفظتي تكرهني بعد ما شفت سعر {product}\nبس مش قادر أقاومه 🤷‍♂️\n{url}\n{trends}`,
-      `🤣 أنا وعدت نفسي ما أشتري.. بس {product} بهالسعر؟!\nكذبت على نفسي 😅\n{url}\n{trends}`,
-      `😭 حسابي البنكي يبكي بس قلبي فرحان\n{product} وصل بسعر مو طبيعي 💸\n{url}\n{trends}`,
-    ],
-    urgency: [
-      `⏰ تنبيه عاجل: {product} بهذا السعر لن يدوم طويلاً\nاشترِ الآن قبل فوات الأوان! 🚨\n{url}\n{trends}`,
-      `🚨 آخر ساعات العرض على {product}!\nلا تندم لاحقاً، القرار الآن ⚡️\n{url}\n{trends}`,
-      `⏳ الكمية محدودة جداً!\n{product} يختفي بسرعة 😱 اطلبه الآن\n{url}\n{trends}`,
-    ],
-  };
-
-  // قوالب حسب الفئة
-  const TEMPLATES_BY_CATEGORY = {
-    electronics: {
-      hype: [
-        `📱 أخيراً! {product} وصل بسعر يكسر السوق 🔥\nللمهتمين بالتقنية هذا رابطكم 👇\n{url}\n{trends}`,
-        `💻 عروض التقنية لا تنتظر!\n{product} الآن بأقل سعر رأيته 🎯\n{url}\n{trends}`,
-      ],
-      informative: [
-        `🔋 مراجعة سريعة: {product}\nمواصفات ممتازة + ضمان + توصيل سريع ✅\n{url}\n{trends}`,
-        `⚙️ للي يدور جهاز موثوق\n{product} خيار لا يخيب — شوف التفاصيل 👇\n{url}\n{trends}`,
-      ],
-      funny: [
-        `🤓 نفسي وتقنيتي اتفقا على شيء واحد\n{product} لازم يكون عندي 😂\n{url}\n{trends}`,
-      ],
-      urgency: [
-        `⚡ فلاش ديل على {product}!\nالعرض ينتهي قريباً ⏰ لا تفوت\n{url}\n{trends}`,
-      ],
-    },
-    fashion: {
-      hype: [
-        `👗 ستايل راقي بسعر خيالي!\n{product} وصل وما رح يصدق عليه 😍\n{url}\n{trends}`,
-        `✨ أناقة فعلية!\n{product} هو اللي كنت تبحث عنه 🛍️\n{url}\n{trends}`,
-      ],
-      informative: [
-        `👔 مش بس موضة — جودة حقيقية\n{product} مريح وعملي وبسعر مناسب 💯\n{url}\n{trends}`,
-      ],
-      funny: [
-        `😂 لما تلبس {product} وكل الناس تسأل: من وين؟\nالسر في الرابط 👇\n{url}\n{trends}`,
-      ],
-      urgency: [
-        `🔥 المقاسات تنفد!\n{product} من أحلى العروض هذا الموسم ⏳\n{url}\n{trends}`,
-      ],
-    },
-    food: {
-      hype: [
-        `🍔 أكل لذيذ + توصيل سريع + سعر مناسب؟\n{product} عندك كل شيء 😋\n{url}\n{trends}`,
-        `🍕 جوعان؟ هذا العرض على {product} ما يُرفض!\nاطلب الآن قبل ما تنتهي الكمية 🔥\n{url}\n{trends}`,
-      ],
-      informative: [
-        `🥗 تبحث عن خيار صحي ولذيذ؟\n{product} الحل المثالي لك ✅\n{url}\n{trends}`,
-      ],
-      funny: [
-        `😂 دايتي انتهى بس {product} ما أقدر أقاومه\nالجسم يصبر والقلب ما يصبر 😅\n{url}\n{trends}`,
-      ],
-      urgency: [
-        `⏰ عرض اليوم فقط على {product}!\nاطلب الآن قبل ما ينتهي 🚨\n{url}\n{trends}`,
-      ],
-    },
-    beauty: {
-      hype: [
-        `💄 سر الجمال الحقيقي!\n{product} غيّر نظرتي للعناية بالبشرة ✨\n{url}\n{trends}`,
-        `🌸 جربته وما ندمت!\n{product} نتائج لا تصدق بسعر ممتاز 💕\n{url}\n{trends}`,
-      ],
-      informative: [
-        `💆 عناية حقيقية بمكونات طبيعية\n{product} مناسب لكل أنواع البشرة ✅\n{url}\n{trends}`,
-      ],
-      funny: [
-        `😂 قبل {product}: أنا والمرآة ما نتكلم\nبعده: بصراحة أنا وسيم 🤭\n{url}\n{trends}`,
-      ],
-      urgency: [
-        `⏳ الكمية المحدودة على {product} توشك تنتهي!\nاطلبي الآن 💨\n{url}\n{trends}`,
-      ],
-    },
-    home: {
-      hype: [
-        `🏠 بيتك يستاهل الأحسن!\n{product} يحوّل أي غرفة لتحفة 😍\n{url}\n{trends}`,
-        `✨ ديكور راقي بسعر بسيط\n{product} الإضافة اللي بيتك ناقصها 🏡\n{url}\n{trends}`,
-      ],
-      informative: [
-        `🛋️ جودة + عملية + سعر مناسب\n{product} اختيار ذكي لبيتك 💯\n{url}\n{trends}`,
-      ],
-      funny: [
-        `😂 زوجتي قالت لا تشتري شيء\nبس {product} بهالسعر؟ معذور 🤷‍♂️\n{url}\n{trends}`,
-      ],
-      urgency: [
-        `🚨 عرض محدود على {product}!\nاطلبه قبل ما ترتفع الأسعار 📦\n{url}\n{trends}`,
-      ],
-    },
-  };
-
-  const product   = productDesc || 'هذا المنتج المميز';
-  const trendTags = trends.map(t => t.name).join(' ');
-  const fixed     = fixedTags ? '#فيصل_يختار #تخفيضات' : '';
-  const allTags   = [trendTags, fixed].filter(Boolean).join(' ');
-
-  // اختر القوالب حسب الفئة أو العامة
-  let pool = TEMPLATES_GENERAL[tone] || TEMPLATES_GENERAL.hype;
-  if (category && TEMPLATES_BY_CATEGORY[category]) {
-    const catTones = TEMPLATES_BY_CATEGORY[category][tone] || TEMPLATES_BY_CATEGORY[category].hype || [];
-    pool = [...pool, ...catTones]; // دمج القوالب العامة والمخصصة
-  }
-
-  const template = pool[Math.floor(Math.random() * pool.length)];
-  let tweet = template
-    .replace(/{product}/g, product)
-    .replace(/{url}/g, affiliateUrl)
-    .replace(/{trends}/g, allTags);
-
-  if (tweet.length > 280) {
-    const suffix = `\n${affiliateUrl}\n${allTags}`;
-    const maxText = 280 - suffix.length - 4;
-    const lines = tweet.split('\n').slice(0, -2);
-    const text = lines.join('\n');
-    tweet = (text.length > maxText ? text.substring(0, maxText) + '…' : text) + suffix;
-  }
-
-  return { success: true, tweet, charCount: tweet.length };
-});
 
 // ── النشر بـ Puppeteer ────────────────────────────
 ipcMain.handle('puppeteer-post', async (_, { content }) => {
@@ -807,21 +510,35 @@ function searchDuckDuckGo(query) {
           }
 
           // استخراج نتائج البحث من HTML
-          // كل نتيجة: <a class="result__a" href="...">العنوان</a>
           const results = [];
           const titleMatches = [...data.matchAll(/class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g)];
           const snippetMatches = [...data.matchAll(/class="result__snippet"[^>]*>([^<]+)<\/a>/g)];
 
+          // دالة لفك تشفير رابط DuckDuckGo
+          function decodeDDGUrl(rawUrl) {
+            try {
+              // روابط DuckDuckGo تكون بهذا الشكل: //duckduckgo.com/l/?uddg=ENCODED_URL
+              if (rawUrl.includes('duckduckgo.com/l/') && rawUrl.includes('uddg=')) {
+                const uddg = rawUrl.match(/uddg=([^&]+)/)?.[1];
+                if (uddg) return decodeURIComponent(uddg);
+              }
+              // إذا كان رابطاً عادياً أعده كما هو
+              if (rawUrl.startsWith('http')) return rawUrl;
+              if (rawUrl.startsWith('//')) return 'https:' + rawUrl;
+              return rawUrl;
+            } catch(e) { return rawUrl; }
+          }
+
           for (let i = 0; i < Math.min(titleMatches.length, 6); i++) {
-            const url = titleMatches[i][1];
+            const rawUrl = titleMatches[i][1];
+            const url = decodeDDGUrl(rawUrl); // ← فك تشفير الرابط
             const title = titleMatches[i][2].trim();
             const snippet = snippetMatches[i] ? snippetMatches[i][1].trim() : '';
 
-            // استخراج السعر من الـ snippet إذا وجد
             const priceMatch = snippet.match(/(?:SAR|ريال|SR|﷼|\$|USD)\s*[\d,\.]+|[\d,\.]+\s*(?:SAR|ريال|SR)/i);
             const price = priceMatch ? priceMatch[0] : '';
 
-            if (title && url) {
+            if (title && url && url.startsWith('http')) {
               results.push({
                 name: title.substring(0, 60),
                 brand: '',
