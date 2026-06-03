@@ -274,7 +274,33 @@ async function launchChromeWithDebugging() {
   await new Promise(r => setTimeout(r, 4000));
 }
 
+async function ensurePuppeteer() {
+  try {
+    require('puppeteer-core');
+    return true;
+  } catch(e) {
+    // puppeteer-core غير موجود — ثبّته تلقائياً
+    const { execSync } = require('child_process');
+    const appPath = path.join(app.getPath('userData'), 'node_modules');
+    try {
+      mainWindow?.webContents.send('puppeteer-installing', {});
+      execSync(`npm install puppeteer-core@21 --prefix "${app.getPath('userData')}"`, {
+        timeout: 120000,
+        stdio: 'ignore',
+      });
+      // أضف مسار node_modules للـ require
+      require('module').globalPaths.push(path.join(app.getPath('userData'), 'node_modules'));
+      require('puppeteer-core');
+      return true;
+    } catch(e2) {
+      return false;
+    }
+  }
+}
+
 async function connectToChrome() {
+  const ok = await ensurePuppeteer();
+  if (!ok) return null;
   let puppeteer;
   try { puppeteer = require('puppeteer-core'); } catch(e) { return null; }
   try {
@@ -284,9 +310,11 @@ async function connectToChrome() {
 }
 
 async function postWithPuppeteer(content) {
+  const ok = await ensurePuppeteer();
+  if (!ok) return { success: false, error: 'تعذر تثبيت puppeteer-core — تأكد من اتصال الإنترنت' };
   let puppeteer;
   try { puppeteer = require('puppeteer-core'); } catch(e) {
-    return { success: false, error: 'puppeteer-core غير مثبت — شغّل npm install أولاً' };
+    return { success: false, error: 'puppeteer-core غير مثبت' };
   }
   const chromePath = getChromePath();
   if (!chromePath) return { success: false, error: 'لم يتم العثور على Chrome' };
