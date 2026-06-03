@@ -1,8 +1,16 @@
-const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session, dialog } = require('electron');
 const path = require('path');
 const https = require('https');
 const { TwitterApi } = require('twitter-api-v2');
-const Database = require('better-sqlite3');
+let Database;
+try {
+  Database = require('better-sqlite3');
+} catch(e) {
+  app.whenReady().then(() => {
+    dialog.showErrorBox('خطأ في قاعدة البيانات', 'فشل تحميل better-sqlite3:\n' + e.message + '\n\nيرجى إبلاغ الدعم.');
+    app.quit();
+  });
+}
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
