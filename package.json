@@ -19,7 +19,7 @@
     "electron-rebuild": "^3.2.9"
   },
   "build": {
-    "appId": "com.nashir.app",
+    "appId": "com.nashir.desktop.v2",
     "productName": "ناشر",
     "directories": {
       "output": "dist"
