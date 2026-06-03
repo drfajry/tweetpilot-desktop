@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('api', {
   puppeteerPost:    (data)   => ipcRenderer.invoke('puppeteer-post', data),
   puppeteerLogin:   ()       => ipcRenderer.invoke('puppeteer-login'),
   checkChrome:      ()       => ipcRenderer.invoke('check-chrome'),
+  onPuppeteerInstalling: (cb) => ipcRenderer.on('puppeteer-installing', () => cb()),
   // Tweet
   generateTweet:    (data)   => ipcRenderer.invoke('generate-tweet', data),
   postTweet:        (data)   => ipcRenderer.invoke('post-tweet', data),
