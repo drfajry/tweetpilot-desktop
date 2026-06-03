@@ -14,8 +14,12 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install Visual Studio Build Tools
+        run: npm install --global windows-build-tools --vs2019
+        continue-on-error: true
+
       - name: Install dependencies
-        run: npm install
+        run: npm install --ignore-scripts
 
       - name: Rebuild better-sqlite3 for Electron
         run: npx electron-rebuild -f -w better-sqlite3
