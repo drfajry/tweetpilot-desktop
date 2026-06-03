@@ -1,4 +1,4 @@
-name: Build Tweet Pilot
+name: Build Nashir
 
 on:
   push:
@@ -9,14 +9,24 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: npm run build-win
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Rebuild better-sqlite3 for Electron
+        run: npx electron-rebuild -f -w better-sqlite3
+
+      - name: Build Windows installer
+        run: npm run build-win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
         with:
-          name: TweetPilot-Windows
+          name: Nashir-Windows
           path: dist/*.exe
