@@ -5,6 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
     "build-win": "electron-builder --win --x64"
   },
   "dependencies": {
@@ -39,6 +40,8 @@
     "protocols": {
       "name": "nashir",
       "schemes": ["nashir"]
-    }
+    },
+    "extraResources": [],
+    "asar": true
   }
 }
