@@ -1052,6 +1052,10 @@ function renderS2(){
   <div id="puppeteerStatus" style="display:none;margin-top:10px;text-align:center;font-size:13px;color:#1d9bf0"></div>`;
 }
 function bindS2(){
+  window.api.onPuppeteerInstalling(() => {
+    const status = document.getElementById('puppeteerStatus');
+    if(status) { status.style.display='block'; status.textContent='📦 جاري تحميل مكتبة النشر (مرة واحدة فقط)...'; }
+  });
   // نشر تلقائي بـ Puppeteer
   document.getElementById('btnPuppeteer')?.addEventListener('click', async ()=>{
     const btn = document.getElementById('btnPuppeteer');
