@@ -30,17 +30,11 @@
       "renderer/**/*"
     ],
     "win": {
-      "target": "nsis",
+      "target": "portable",
       "icon": "renderer/icon.ico"
     },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "installerLanguages": ["ar"],
-      "language": "1025"
+    "portable": {
+      "artifactName": "Nashir-Portable.exe"
     },
     "protocols": {
       "name": "nashir",
