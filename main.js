@@ -275,7 +275,8 @@ async function launchChromeWithDebugging() {
 }
 
 async function connectToChrome() {
-  const puppeteer = require('puppeteer-core');
+  let puppeteer;
+  try { puppeteer = require('puppeteer-core'); } catch(e) { return null; }
   try {
     await fetch('http://localhost:9222/json/version');
     return await puppeteer.connect({ browserURL: 'http://localhost:9222', defaultViewport: null });
@@ -283,6 +284,10 @@ async function connectToChrome() {
 }
 
 async function postWithPuppeteer(content) {
+  let puppeteer;
+  try { puppeteer = require('puppeteer-core'); } catch(e) {
+    return { success: false, error: 'puppeteer-core غير مثبت — شغّل npm install أولاً' };
+  }
   const chromePath = getChromePath();
   if (!chromePath) return { success: false, error: 'لم يتم العثور على Chrome' };
 
