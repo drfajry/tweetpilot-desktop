@@ -16,28 +16,23 @@
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.nashir.desktop.v2",
-    "productName": "ناشر",
+    "appId": "com.nashir.app",
+    "productName": "nashir",
     "directories": {
       "output": "dist"
     },
     "files": [
-      "main.js",
-      "preload.js",
-      "db.js",
-      "renderer/**/*"
+      "**/*",
+      "!dist/**",
+      "!node_modules/.bin/**"
     ],
     "win": {
       "target": "nsis",
       "icon": "renderer/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "protocols": {
-      "name": "nashir",
-      "schemes": ["nashir"]
+      "oneClick": true,
+      "installerLanguages": ["en_US"]
     }
   }
 }
