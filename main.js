@@ -1,23 +1,15 @@
-const { app, BrowserWindow, ipcMain, shell, session, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
 const https = require('https');
 const { TwitterApi } = require('twitter-api-v2');
-let Database;
-try {
-  Database = require('better-sqlite3');
-} catch(e) {
-  app.whenReady().then(() => {
-    dialog.showErrorBox('خطأ في قاعدة البيانات', 'فشل تحميل better-sqlite3:\n' + e.message + '\n\nيرجى إبلاغ الدعم.');
-    app.quit();
-  });
-}
+const Database = require('./db'); // محرك JSON — بدون أي compilation
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
+const API_KEY      = ''; // ← Consumer Key
+const API_SECRET   = ''; // ← Consumer Secret
+const ACCESS_TOKEN = ''; // ← Access Token
+const ACCESS_SECRET= ''; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
 const APP_VERSION    = '1.1.0'; // ← غيّر هذا عند كل إصدار جديد
 
@@ -75,30 +67,6 @@ let db;
 
 function initDB() {
   db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS auth (
-      id INTEGER PRIMARY KEY,
-      username TEXT,
-      name TEXT,
-      profile_image TEXT
-    );
-    CREATE TABLE IF NOT EXISTS tweet_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      content TEXT,
-      tweet_id TEXT,
-      status TEXT,
-      posted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS scheduled_tweets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      content TEXT,
-      scheduled_at DATETIME,
-      status TEXT DEFAULT 'pending',
-      tweet_id TEXT,
-      error TEXT
-    );
-  `);
 }
 
 // ── بناء Twitter client بـ OAuth 1.0a ─────────────
