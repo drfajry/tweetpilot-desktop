@@ -6,10 +6,10 @@ const Database = require('./db'); // محرك JSON — بدون أي compilation
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = ''; // ← Consumer Key
-const API_SECRET   = ''; // ← Consumer Secret
-const ACCESS_TOKEN = ''; // ← Access Token
-const ACCESS_SECRET= ''; // ← Access Token Secret
+const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
+const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
+const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
+const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
 const APP_VERSION    = '1.1.0'; // ← غيّر هذا عند كل إصدار جديد
 
