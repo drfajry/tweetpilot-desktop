@@ -1,8 +1,25 @@
 const { app, BrowserWindow, ipcMain, shell, session } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+// تسجيل أي خطأ لتشخيص مشاكل الإقلاع
+function logError(msg) {
+  try {
+    const logFile = path.join(app.getPath('userData'), 'error-log.txt');
+    fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch(e) {}
+}
+process.on('uncaughtException', (err) => {
+  logError('UNCAUGHT: ' + (err.stack || err.message));
+  try {
+    const { dialog } = require('electron');
+    dialog.showErrorBox('خطأ في ناشر', (err.message || 'خطأ غير معروف'));
+  } catch(e) {}
+});
+
 const https = require('https');
 const { TwitterApi } = require('twitter-api-v2');
-const Database = require('./db'); // محرك JSON — بدون أي compilation
+const Database = require('./db');
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
