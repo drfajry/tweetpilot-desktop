@@ -208,62 +208,53 @@ async function activateLicense(){
 // ── صفحة SEO يوتيوب ──────────────────────────────
 const SEO_STATE = {
   title:'', afUrl:'', trends:[], selTrend:null,
-  category:'', tone:'promotional',
+  vtype:'entertainment',
   result:null, loading:false,
 };
 
 function renderSeoPage(){
   const r = SEO_STATE.result;
-  const TONES_SEO = [
-    {id:'promotional', l:'🛒 ترويجي'},
-    {id:'review',      l:'⭐ مراجعة'},
-    {id:'tutorial',    l:'📚 تعليمي'},
-    {id:'comparison',  l:'⚖️ مقارنة'},
+  const VTYPES = [
+    {id:'entertainment', l:'😂 ترفيهي / مضحك'},
+    {id:'review',        l:'⭐ مراجعة منتج'},
+    {id:'tutorial',      l:'📚 تعليمي / شرح'},
+    {id:'vlog',          l:'📹 مدوّنة (فلوق)'},
+    {id:'gaming',        l:'🎮 ألعاب'},
+    {id:'cooking',       l:'🍳 طبخ'},
   ];
-  const CATS = [
-    {k:'',            l:'🌐 عام'},
-    {k:'electronics', l:'📱 إلكترونيات'},
-    {k:'fashion',     l:'👗 موضة'},
-    {k:'food',        l:'🍔 طعام'},
-    {k:'beauty',      l:'💄 جمال'},
-    {k:'home',        l:'🏠 منزل'},
-  ];
+  const needsLink = ['review'].includes(SEO_STATE.vtype);
   return `<div class="ptit">📈 SEO يوتيوب</div>
-  <div class="psub">اكتب عنوان المنتج لتوليد وصف يوتيوب محسّن للـ SEO</div>
+  <div class="psub">اختر نوع الفيديو واكتب العنوان — كل نوع له وصف مختلف تماماً</div>
 
   <div class="card">
-    <div class="ct">🎯 بيانات الفيديو</div>
-    <div class="f">
-      <label>عنوان المنتج أو الفيديو *</label>
-      <input id="seoTitle" placeholder="مثل: مراجعة سماعات AirPods Pro" value="${SEO_STATE.title}">
-    </div>
-    <div class="f">
-      <label>رابط المنتج (اختياري)</label>
-      <input id="seoAfUrl" placeholder="https://amzn.to/..." value="${SEO_STATE.afUrl}">
-    </div>
-    <div class="f">
-      <label>فئة المنتج</label>
-      <div class="tabs" style="margin-bottom:0">
-        ${CATS.map(c=>`<button class="tab ${SEO_STATE.category===c.k?'active':''}" onclick="SEO_STATE.category='${c.k}';render()">${c.l}</button>`).join('')}
-      </div>
-    </div>
-    <div class="f" style="margin-bottom:0">
-      <label>نوع الفيديو</label>
-      <div class="tones" style="grid-template-columns:1fr 1fr">
-        ${TONES_SEO.map(t=>`<button class="tone ${SEO_STATE.tone===t.id?'active':''}" onclick="SEO_STATE.tone='${t.id}';render()">${t.l}</button>`).join('')}
-      </div>
+    <div class="ct">🎬 نوع الفيديو</div>
+    <div class="tones" style="grid-template-columns:1fr 1fr 1fr">
+      ${VTYPES.map(t=>`<button class="tone ${SEO_STATE.vtype===t.id?'active':''}" onclick="SEO_STATE.vtype='${t.id}';render()">${t.l}</button>`).join('')}
     </div>
   </div>
 
   <div class="card">
-    <div class="ct">▶️ ترندات يوتيوب</div>
+    <div class="ct">🎯 بيانات الفيديو</div>
+    <div class="f">
+      <label>عنوان الفيديو *</label>
+      <input id="seoTitle" placeholder="اكتب عنوان الفيديو..." value="${SEO_STATE.title}">
+    </div>
+    ${needsLink ? `
+    <div class="f">
+      <label>رابط المنتج (للمراجعة)</label>
+      <input id="seoAfUrl" placeholder="https://amzn.to/..." value="${SEO_STATE.afUrl}">
+    </div>` : ''}
+  </div>
+
+  <div class="card">
+    <div class="ct">▶️ ترندات يوتيوب (اختياري)</div>
     <button class="btn btn-g" id="btnSeoTrends" style="width:auto;padding:8px 18px;font-size:13px">🔄 جلب الترندات</button>
     ${SEO_STATE.trends.length ? `
     <div style="margin-top:12px">
-      <div style="font-size:12px;color:#6b7280;margin-bottom:8px">اختر ترنداً لإضافته للوصف (اختياري):</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px">اختر ترنداً للإلهام:</div>
       <div style="display:flex;flex-wrap:wrap;gap:7px">
         ${SEO_STATE.trends.map((t,i)=>`
-          <span onclick="selectSeoTrend(${i})" style="padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:2px solid ${SEO_STATE.selTrend===i?'#1d9bf0':'#1a2540'};background:${SEO_STATE.selTrend===i?'#0c2d4a':'#0d1421'};color:${SEO_STATE.selTrend===i?'#1d9bf0':'#aaa'};transition:all .2s">
+          <span onclick="selectSeoTrend(${i})" style="padding:5px 12px;border-radius:16px;font-size:12px;cursor:pointer;border:2px solid ${SEO_STATE.selTrend===i?'#1d9bf0':'#1a2540'};background:${SEO_STATE.selTrend===i?'#0c2d4a':'#0d1421'};color:${SEO_STATE.selTrend===i?'#1d9bf0':'#aaa'}">
             ${t.title || t.name}
           </span>`).join('')}
       </div>
@@ -277,30 +268,21 @@ function renderSeoPage(){
   ${r ? `
   <div class="card">
     <div class="ct" style="color:#00c896">✅ الناتج — اضغط على أي قسم لنسخه</div>
-
     <div style="margin-bottom:16px">
       <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ العنوان المحسّن</div>
       <div onclick="copySection('seoResTitle')" id="seoResTitle" class="seo-res-box">${escHtml(r.title)}</div>
     </div>
-
     <div style="margin-bottom:16px">
       <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">📝 الوصف الكامل</div>
-      <div onclick="copySection('seoResDesc')" id="seoResDesc" class="seo-res-box" style="white-space:pre-wrap;line-height:1.9;max-height:300px;overflow-y:auto">${escHtml(r.description)}</div>
+      <div onclick="copySection('seoResDesc')" id="seoResDesc" class="seo-res-box" style="white-space:pre-wrap;line-height:1.9;max-height:320px;overflow-y:auto">${escHtml(r.description)}</div>
     </div>
-
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🔖 الوسوم (Tags)</div>
+      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🔖 الوسوم</div>
       <div onclick="copySection('seoResTags')" id="seoResTags" class="seo-res-box">${escHtml(r.tags)}</div>
     </div>
-
-    <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🔑 كلمات مفتاحية للبحث</div>
-      <div onclick="copySection('seoResKeywords')" id="seoResKeywords" class="seo-res-box">${escHtml(r.keywords)}</div>
-    </div>
-
     <div style="display:flex;gap:10px">
-      <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ كل الوصف</button>
-      <button class="btn btn-g" onclick="SEO_STATE.result=null;render()" style="width:auto;padding:11px 18px;font-size:13px">🔄 إعادة التوليد</button>
+      <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ الكل</button>
+      <button class="btn btn-g" onclick="SEO_STATE.result=null;render()" style="width:auto;padding:11px 18px;font-size:13px">🔄 إعادة</button>
     </div>
   </div>` : ''}`;
 }
@@ -334,106 +316,70 @@ async function generateSeo(){
   render();
 
   const trend = SEO_STATE.selTrend !== null ? (SEO_STATE.trends[SEO_STATE.selTrend]?.title || '') : '';
-  const year = new Date().getFullYear();
+  const trendLine = trend ? `\n🔥 من وحي ترند: ${trend}\n` : '';
+  const sub = '✅ اشترك في القناة وفعّل الجرس 🔔 ليصلك كل جديد';
+  const sep = '━━━━━━━━━━━━━━━━━━━━';
 
-  const CATS_AR = { electronics:'إلكترونيات', fashion:'موضة وأزياء', food:'طعام ومطاعم', beauty:'جمال وعناية', home:'منزل وديكور' };
-  const catAr = CATS_AR[SEO_STATE.category] || 'تسوق';
+  let seoTitle = '', desc = '', tags = '';
 
-  // عنوان SEO محسّن
-  const seoTitle = `${title} | أفضل سعر ${year} | ${catAr}`;
+  if (SEO_STATE.vtype === 'entertainment') {
+    seoTitle = `${title} 😂🔥`;
+    desc = `${title}\n\n` +
+      `محتوى ترفيهي خفيف يضحك من القلب 😂\n` +
+      `إذا ضحكت لا تنسى تشارك الفيديو مع أصحابك! 🤣\n${trendLine}\n` +
+      `${sep}\n${sub}\n\n` +
+      `#ترفيه #كوميديا #ضحك #مقاطع_مضحكة #فيصل`;
+    tags = `${title}, مقاطع مضحكة, كوميديا, ترفيه, ضحك, فكاهة, ${trend||'منوعات'}`;
+  }
+  else if (SEO_STATE.vtype === 'review') {
+    seoTitle = `مراجعة ${title} | تجربة حقيقية`;
+    desc = `⭐ مراجعة شاملة وصادقة لـ ${title}\n\n` +
+      `في هذا الفيديو أشاركك تجربتي الحقيقية — المميزات والعيوب قبل ما تشتري.\n${trendLine}\n` +
+      `${sep}\n📌 محتوى الفيديو:\n` +
+      `• نظرة عامة\n• المميزات\n• العيوب\n• هل يستحق الشراء؟\n\n` +
+      `${afUrl ? `${sep}\n🔗 رابط المنتج:\n${afUrl}\n\n` : ''}` +
+      `${sep}\n${sub}\n\n` +
+      `#مراجعة #تجربة #${title.split(' ')[0]}`;
+    tags = `مراجعة ${title}, تجربة ${title}, ${title} review, هل يستحق, ${trend||'مراجعات'}`;
+  }
+  else if (SEO_STATE.vtype === 'tutorial') {
+    seoTitle = `كيف ${title} | شرح خطوة بخطوة`;
+    desc = `📚 في هذا الفيديو نشرح ${title} بطريقة سهلة وواضحة\n\n` +
+      `تابع الخطوات معي وراح تتعلم بسهولة 👍\n${trendLine}\n` +
+      `${sep}\n📌 ما ستتعلمه:\n` +
+      `• الأساسيات\n• الخطوات العملية\n• نصائح مهمة\n• أخطاء شائعة تتجنبها\n\n` +
+      `${sep}\n${sub}\n\n` +
+      `#شرح #تعليم #${title.split(' ')[0]} #خطوة_بخطوة`;
+    tags = `كيف ${title}, شرح ${title}, تعليم, طريقة, دليل, ${trend||'تعليمي'}`;
+  }
+  else if (SEO_STATE.vtype === 'vlog') {
+    seoTitle = `${title} | يوم في حياتي 📹`;
+    desc = `📹 ${title}\n\n` +
+      `يومياتي وتجاربي أشاركها معكم 💛\n` +
+      `رافقوني في هذا اليوم! ${trendLine}\n` +
+      `${sep}\n${sub}\n\n` +
+      `#فلوق #يوميات #vlog #حياتي`;
+    tags = `${title}, فلوق, يوميات, vlog, يوم في حياتي, ${trend||'منوعات'}`;
+  }
+  else if (SEO_STATE.vtype === 'gaming') {
+    seoTitle = `${title} 🎮`;
+    desc = `🎮 ${title}\n\n` +
+      `جيمنق ومتعة وتحديات! انضم للحماس 🔥\n${trendLine}\n` +
+      `${sep}\n${sub}\n\n` +
+      `#ألعاب #جيمنق #gaming #${title.split(' ')[0]}`;
+    tags = `${title}, ألعاب, جيمنق, gaming, gameplay, ${trend||'ألعاب'}`;
+  }
+  else if (SEO_STATE.vtype === 'cooking') {
+    seoTitle = `طريقة ${title} 🍳 وصفة سهلة`;
+    desc = `🍳 طريقة عمل ${title} خطوة بخطوة\n\n` +
+      `وصفة سهلة ولذيذة تقدر تسويها في البيت 👩‍🍳\n${trendLine}\n` +
+      `${sep}\n📌 المكونات والطريقة في الفيديو\n\n` +
+      `${sep}\n${sub}\n\n` +
+      `#طبخ #وصفات #${title.split(' ')[0]} #أكل`;
+    tags = `طريقة ${title}, وصفة ${title}, طبخ, أكل, وصفات سهلة, ${trend||'طبخ'}`;
+  }
 
-  // وصف يوتيوب حسب النوع
-  const INTROS = {
-    promotional: `🛒 في هذا الفيديو نعرض لك أفضل عرض على ${title}!
-
-لا تفوت هذه الفرصة الذهبية — سعر لن تجده في أي مكان آخر.`,
-    review:      `⭐ مراجعة شاملة لـ ${title}
-
-هل يستحق السعر؟ كل ما تحتاج معرفته قبل الشراء في هذا الفيديو.`,
-    tutorial:    `📚 في هذا الفيديو سنشرح كيفية الاستخدام الصحيح لـ ${title}
-
-خطوة بخطوة حتى تحصل على أفضل نتيجة.`,
-    comparison:  `⚖️ مقارنة شاملة: ${title} مقابل المنافسين
-
-أيهم يستحق أموالك؟ نجاوب في هذا الفيديو.`,
-  };
-
-  const intro = INTROS[SEO_STATE.tone] || INTROS.promotional;
-
-  const desc = `${intro}
-
-` +
-    `━━━━━━━━━━━━━━━━━━━━
-` +
-    `📌 ما ستجده في هذا الفيديو:
-` +
-    `• مميزات ${title}
-` +
-    `• مقارنة الأسعار
-` +
-    `• أفضل مكان للشراء
-` +
-    `• تقييم حقيقي وصادق
-
-` +
-    `━━━━━━━━━━━━━━━━━━━━
-` +
-    `${afUrl ? `🔗 رابط المنتج:
-${afUrl}
-
-` : ''}` +
-    `━━━━━━━━━━━━━━━━━━━━
-` +
-    `⏱️ الفهرس:
-` +
-    `00:00 - المقدمة
-` +
-    `00:30 - نظرة عامة
-` +
-    `02:00 - المميزات والعيوب
-` +
-    `04:00 - مقارنة السعر
-` +
-    `05:30 - التقييم النهائي
-
-` +
-    `━━━━━━━━━━━━━━━━━━━━
-` +
-    `${trend ? `🔥 ترند اليوم: ${trend}
-
-` : ''}` +
-    `✅ اشترك في القناة وفعّل الجرس 🔔 لتصلك كل العروض والمراجعات
-
-` +
-    `#فيصل_يختار #تخفيضات #${catAr.replace(/\s/g,'_')}`;
-
-  // وسوم يوتيوب
-  const titleWords = title.split(' ').filter(w=>w.length>2);
-  const tags = [
-    title,
-    ...titleWords,
-    catAr,
-    'تسوق اونلاين',
-    'افضل سعر',
-    'عروض وتخفيضات',
-    'مراجعة منتجات',
-    'توصيات تسوق',
-    trend || '',
-    'فيصل يختار',
-  ].filter(Boolean).join(', ');
-
-  // كلمات مفتاحية للبحث
-  const keywords = [
-    `${title} سعر`,
-    `${title} مراجعة`,
-    `${title} افضل`,
-    `اشتري ${title}`,
-    `عروض ${catAr}`,
-    `تخفيضات ${year}`,
-    `افضل ${catAr} ${year}`,
-  ].join(' | ');
-
-  SEO_STATE.result = { title: seoTitle, description: desc, tags, keywords };
+  SEO_STATE.result = { title: seoTitle, description: desc, tags };
   SEO_STATE.loading = false;
   render();
 }
@@ -450,20 +396,7 @@ window.copySection = async (id) => {
 async function copyAllSeo(){
   const r = SEO_STATE.result;
   if(!r) return;
-  const all = `العنوان:
-${r.title}
-
-${'━'.repeat(30)}
-الوصف:
-${r.description}
-
-${'━'.repeat(30)}
-الوسوم:
-${r.tags}
-
-${'━'.repeat(30)}
-الكلمات المفتاحية:
-${r.keywords}`;
+  const all = `العنوان:\n${r.title}\n\n${'━'.repeat(20)}\nالوصف:\n${r.description}\n\n${'━'.repeat(20)}\nالوسوم:\n${r.tags}`;
   await window.api.copyToClipboard(all);
   alert('✅ تم نسخ كل المحتوى');
 }
