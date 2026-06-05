@@ -410,54 +410,112 @@ async function openChromeForLogin() {
 // ── النشر بـ Puppeteer ────────────────────────────
 // ── توليد التغريدة ───────────────────────────────
 ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, fixedTags, category }) => {
+  // فك ترميز الرابط إذا كان مشفّراً
+  let cleanUrl = affiliateUrl || '';
+  try {
+    if (cleanUrl.includes('%')) {
+      const decoded = decodeURIComponent(cleanUrl);
+      if (decoded.length < cleanUrl.length) cleanUrl = decoded;
+    }
+    // تقصير روابط أمازون: الإبقاء على dp/CODE فقط
+    const amazonMatch = cleanUrl.match(/(https?:\/\/[^\/]*amazon\.[a-z.]+)\/.*?\/(dp\/[A-Z0-9]+)/i)
+      || cleanUrl.match(/(https?:\/\/[^\/]*amazon\.[a-z.]+)\/(dp\/[A-Z0-9]+)/i);
+    if (amazonMatch) cleanUrl = `${amazonMatch[1]}/${amazonMatch[2]}`;
+    // تقصير روابط نون: إزالة المعاملات بعد ?
+    if (/noon\.com/i.test(cleanUrl)) cleanUrl = cleanUrl.split('?')[0];
+  } catch(e) {}
+
   const TEMPLATES_GENERAL = {
     hype: [
-      `🔥 لا تفوتك هذه الفرصة! {product} بسعر خيالي لن تصدقه\nاطلبه الآن قبل نفاد الكمية 👇\n{url}\n{trends}`,
-      `⚡️ عرض انفجاري على {product}!\nهذا هو الوقت المثالي للشراء 🛒\n{url}\n{trends}`,
-      `🚀 من يبحث عن {product} هذا هو الرابط الذهبي\nالسعر ما راح يتكرر! 💥\n{url}\n{trends}`,
+      `🔥 لا تفوتك! {product} بسعر خيالي 👇\n{url}\n{trends}`,
+      `⚡️ عرض ناري على {product}! وقت الشراء الآن 🛒\n{url}\n{trends}`,
+      `🚀 تبحث عن {product}؟ هذا رابطك الذهبي 💥\n{url}\n{trends}`,
+      `🎯 {product} بسعر ما يتكرر! اطلب الحين ⬇️\n{url}\n{trends}`,
+      `💎 كنز اليوم: {product} بأقل سعر 🔥\n{url}\n{trends}`,
+      `🛍️ {product} صار متوفر بسعر يجنّن! 😍\n{url}\n{trends}`,
+      `🔝 الأكثر طلباً: {product} — احجز نسختك الآن\n{url}\n{trends}`,
+      `✨ خطفت العين! {product} بعرض محدود ⏳\n{url}\n{trends}`,
     ],
     informative: [
-      `📊 إذا كنت تبحث عن {product} فهذا أفضل خيار متاح الآن\nجودة عالية وسعر منافس ✅\n{url}\n{trends}`,
-      `💡 نصيحة لمن يريد {product}: هذا المنتج حصل على أعلى التقييمات\nجربه بنفسك 👇\n{url}\n{trends}`,
+      `📊 تبحث عن {product}؟ أفضل خيار متاح الآن ✅\n{url}\n{trends}`,
+      `💡 {product} حاصل على أعلى التقييمات — جربه 👇\n{url}\n{trends}`,
+      `🔍 بحثت كثير، وهذا أفضل {product} بالسوق 📌\n{url}\n{trends}`,
+      `📋 مواصفات ممتازة + ضمان: {product} ✅\n{url}\n{trends}`,
+      `🧐 قبل ما تشتري {product} شوف هذا العرض\n{url}\n{trends}`,
+      `📈 الجودة والسعر مجتمعين في {product}\n{url}\n{trends}`,
     ],
     funny: [
-      `😂 محفظتي تكرهني بعد ما شفت سعر {product}\nبس ما أقدر أقاومه 🤷‍♂️\n{url}\n{trends}`,
-      `🤣 وعدت نفسي ما أشتري.. بس {product} بهالسعر؟!\nكذبت على نفسي 😅\n{url}\n{trends}`,
+      `😂 محفظتي تكرهني بعد {product}.. بس ما أقدر أقاوم 🤷‍♂️\n{url}\n{trends}`,
+      `🤣 وعدت نفسي ما أشتري.. بس {product}؟ كذبت 😅\n{url}\n{trends}`,
+      `😭 حسابي يبكي بس قلبي فرحان: {product} وصل 💸\n{url}\n{trends}`,
+      `🙈 لا تورّي زوجتي إني اشتريت {product} 🤫\n{url}\n{trends}`,
+      `😎 صاحبي سألني من وين {product}؟ قلت سر 🔐\n{url}\n{trends}`,
+      `🥹 {product} كان حلم.. اليوم صار بمتناولي 🎉\n{url}\n{trends}`,
     ],
     urgency: [
-      `⏰ تنبيه عاجل: {product} بهذا السعر لن يدوم طويلاً\nاشترِ الآن قبل فوات الأوان! 🚨\n{url}\n{trends}`,
-      `🚨 آخر ساعات العرض على {product}!\nلا تندم لاحقاً، القرار الآن ⚡️\n{url}\n{trends}`,
+      `⏰ عاجل: {product} بهالسعر ما راح يدوم! 🚨\n{url}\n{trends}`,
+      `🚨 آخر ساعات العرض على {product}! 🏃‍♂️\n{url}\n{trends}`,
+      `⏳ الكمية تنفد! {product} يختفي بسرعة 😱\n{url}\n{trends}`,
+      `🔴 تنبيه: السعر يرتفع قريباً على {product}\n{url}\n{trends}`,
+      `⚠️ فرصة أخيرة! {product} بسعر اليوم فقط\n{url}\n{trends}`,
+      `🆘 لا تتأخر! {product} مطلوب بشدة ⚡️\n{url}\n{trends}`,
     ],
   };
 
   const TEMPLATES_BY_CATEGORY = {
-    electronics: { hype:[`📱 أخيراً! {product} وصل بسعر يكسر السوق 🔥\nللمهتمين بالتقنية 👇\n{url}\n{trends}`], informative:[`🔋 مراجعة سريعة: {product}\nمواصفات ممتازة + ضمان ✅\n{url}\n{trends}`] },
-    fashion: { hype:[`👗 ستايل راقي بسعر خيالي!\n{product} 😍\n{url}\n{trends}`] },
-    food: { hype:[`🍔 {product} لذيذ + توصيل سريع + سعر مناسب 😋\n{url}\n{trends}`] },
-    beauty: { hype:[`💄 سر الجمال!\n{product} ✨\n{url}\n{trends}`] },
-    home: { hype:[`🏠 بيتك يستاهل الأحسن!\n{product} 😍\n{url}\n{trends}`] },
+    electronics: {
+      hype: [`📱 {product} وصل بسعر يكسر السوق 🔥\n{url}\n{trends}`, `💻 عرض التقنية: {product} بأقل سعر 🎯\n{url}\n{trends}`, `🎮 {product} حلم كل تقني — بسعر مغري ⚡\n{url}\n{trends}`],
+      informative: [`🔋 {product}: مواصفات قوية + ضمان ✅\n{url}\n{trends}`, `⚙️ {product} جهاز موثوق ما يخيّب 👇\n{url}\n{trends}`],
+      funny: [`🤓 أنا وتقنيتي اتفقنا: {product} لازم 😂\n{url}\n{trends}`],
+      urgency: [`⚡ فلاش ديل على {product}! ⏰\n{url}\n{trends}`],
+    },
+    fashion: {
+      hype: [`👗 ستايل راقي: {product} 😍\n{url}\n{trends}`, `✨ أناقة حقيقية مع {product} 🛍️\n{url}\n{trends}`, `👜 {product} يكمّل إطلالتك بأناقة 💃\n{url}\n{trends}`],
+      informative: [`👔 {product}: جودة + راحة + سعر مناسب 💯\n{url}\n{trends}`],
+      funny: [`😂 يلبسون {product} ويسألون من وين؟ السر بالرابط 👇\n{url}\n{trends}`],
+      urgency: [`🔥 المقاسات تنفد! {product} ⏳\n{url}\n{trends}`],
+    },
+    food: {
+      hype: [`🍔 {product}: لذيذ + توصيل سريع 😋\n{url}\n{trends}`, `🍕 جوعان؟ {product} ما يُرفض 🔥\n{url}\n{trends}`, `🥤 {product} نكهة ما تننسى 😍\n{url}\n{trends}`],
+      informative: [`🥗 تبحث عن صحي ولذيذ؟ {product} الحل ✅\n{url}\n{trends}`],
+      funny: [`😂 دايتي انتهى بسبب {product} 😅\n{url}\n{trends}`],
+      urgency: [`⏰ عرض اليوم فقط على {product}! 🚨\n{url}\n{trends}`],
+    },
+    beauty: {
+      hype: [`💄 سر الجمال: {product} ✨\n{url}\n{trends}`, `🌸 جربته وما ندمت: {product} 💕\n{url}\n{trends}`, `💅 {product} يفرق في روتينك اليومي 🌷\n{url}\n{trends}`],
+      informative: [`💆 {product}: مكونات طبيعية لكل البشرة ✅\n{url}\n{trends}`],
+      funny: [`😂 بعد {product} صرت أنا وسيم 🤭\n{url}\n{trends}`],
+      urgency: [`⏳ كمية محدودة من {product}! 💨\n{url}\n{trends}`],
+    },
+    home: {
+      hype: [`🏠 بيتك يستاهل الأحسن: {product} 😍\n{url}\n{trends}`, `✨ {product} يحوّل بيتك لتحفة 🏡\n{url}\n{trends}`, `🛋️ لمسة جمال لبيتك مع {product} 🌟\n{url}\n{trends}`],
+      informative: [`🛋️ {product}: جودة + عملية + سعر ذكي 💯\n{url}\n{trends}`],
+      funny: [`😂 قالت لا تشتري شيء.. بس {product}؟ معذور 🤷‍♂️\n{url}\n{trends}`],
+      urgency: [`🚨 عرض محدود على {product}! 📦\n{url}\n{trends}`],
+    },
   };
 
-  const product   = productDesc || 'هذا المنتج المميز';
+  const product   = productDesc || 'هذا المنتج';
   const trendTags = (trends || []).map(t => t.name).join(' ');
   const fixed     = fixedTags ? '#فيصل_يختار #تخفيضات' : '';
   const allTags   = [trendTags, fixed].filter(Boolean).join(' ');
 
-  let pool = TEMPLATES_GENERAL[tone] || TEMPLATES_GENERAL.hype;
+  let pool = [...(TEMPLATES_GENERAL[tone] || TEMPLATES_GENERAL.hype)];
   if (category && TEMPLATES_BY_CATEGORY[category]) {
     const catTones = TEMPLATES_BY_CATEGORY[category][tone] || TEMPLATES_BY_CATEGORY[category].hype || [];
     pool = [...pool, ...catTones];
   }
 
   const template = pool[Math.floor(Math.random() * pool.length)];
-  let tweet = template.replace(/{product}/g, product).replace(/{url}/g, affiliateUrl).replace(/{trends}/g, allTags);
+  let tweet = template.replace(/{product}/g, product).replace(/{url}/g, cleanUrl).replace(/{trends}/g, allTags);
 
+  // إذا تجاوزت 280 — اختصر النص مع الإبقاء على الرابط والهاشتاقات
   if (tweet.length > 280) {
-    const suffix = `\n${affiliateUrl}\n${allTags}`;
+    const suffix = `\n${cleanUrl}\n${allTags}`;
     const maxText = 280 - suffix.length - 4;
-    const lines = tweet.split('\n').slice(0, -2);
-    const text = lines.join('\n');
-    tweet = (text.length > maxText ? text.substring(0, maxText) + '…' : text) + suffix;
+    const textPart = template.split('\n')[0].replace(/{product}/g, product);
+    const trimmedText = textPart.length > maxText ? textPart.substring(0, Math.max(0, maxText)) + '…' : textPart;
+    tweet = trimmedText + suffix;
   }
 
   return { success: true, tweet, charCount: tweet.length };
