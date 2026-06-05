@@ -28,7 +28,26 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.1.0'; // ← غيّر هذا عند كل إصدار جديد
+const APP_VERSION    = '1.1.0';
+
+// ── النوافذ ───────────────────────────────────────
+let mainWindow;
+
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1100, height: 780, minWidth: 900, minHeight: 650,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+    title: 'ناشر',
+    backgroundColor: '#070b14',
+    icon: path.join(__dirname, 'renderer', 'icon.ico'),
+  });
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.setMenuBarVisibility(false);
+} // ← غيّر هذا عند كل إصدار جديد
 
 // ── التحقق من التحديثات ───────────────────────────
 async function checkForUpdates(silent = false) {
