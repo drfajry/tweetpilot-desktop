@@ -408,6 +408,113 @@ async function openChromeForLogin() {
 
 
 // ── النشر بـ Puppeteer ────────────────────────────
+// ── توليد التغريدة ───────────────────────────────
+ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, fixedTags, category }) => {
+  const TEMPLATES_GENERAL = {
+    hype: [
+      `🔥 لا تفوتك هذه الفرصة! {product} بسعر خيالي لن تصدقه\nاطلبه الآن قبل نفاد الكمية 👇\n{url}\n{trends}`,
+      `⚡️ عرض انفجاري على {product}!\nهذا هو الوقت المثالي للشراء 🛒\n{url}\n{trends}`,
+      `🚀 من يبحث عن {product} هذا هو الرابط الذهبي\nالسعر ما راح يتكرر! 💥\n{url}\n{trends}`,
+    ],
+    informative: [
+      `📊 إذا كنت تبحث عن {product} فهذا أفضل خيار متاح الآن\nجودة عالية وسعر منافس ✅\n{url}\n{trends}`,
+      `💡 نصيحة لمن يريد {product}: هذا المنتج حصل على أعلى التقييمات\nجربه بنفسك 👇\n{url}\n{trends}`,
+    ],
+    funny: [
+      `😂 محفظتي تكرهني بعد ما شفت سعر {product}\nبس ما أقدر أقاومه 🤷‍♂️\n{url}\n{trends}`,
+      `🤣 وعدت نفسي ما أشتري.. بس {product} بهالسعر؟!\nكذبت على نفسي 😅\n{url}\n{trends}`,
+    ],
+    urgency: [
+      `⏰ تنبيه عاجل: {product} بهذا السعر لن يدوم طويلاً\nاشترِ الآن قبل فوات الأوان! 🚨\n{url}\n{trends}`,
+      `🚨 آخر ساعات العرض على {product}!\nلا تندم لاحقاً، القرار الآن ⚡️\n{url}\n{trends}`,
+    ],
+  };
+
+  const TEMPLATES_BY_CATEGORY = {
+    electronics: { hype:[`📱 أخيراً! {product} وصل بسعر يكسر السوق 🔥\nللمهتمين بالتقنية 👇\n{url}\n{trends}`], informative:[`🔋 مراجعة سريعة: {product}\nمواصفات ممتازة + ضمان ✅\n{url}\n{trends}`] },
+    fashion: { hype:[`👗 ستايل راقي بسعر خيالي!\n{product} 😍\n{url}\n{trends}`] },
+    food: { hype:[`🍔 {product} لذيذ + توصيل سريع + سعر مناسب 😋\n{url}\n{trends}`] },
+    beauty: { hype:[`💄 سر الجمال!\n{product} ✨\n{url}\n{trends}`] },
+    home: { hype:[`🏠 بيتك يستاهل الأحسن!\n{product} 😍\n{url}\n{trends}`] },
+  };
+
+  const product   = productDesc || 'هذا المنتج المميز';
+  const trendTags = (trends || []).map(t => t.name).join(' ');
+  const fixed     = fixedTags ? '#فيصل_يختار #تخفيضات' : '';
+  const allTags   = [trendTags, fixed].filter(Boolean).join(' ');
+
+  let pool = TEMPLATES_GENERAL[tone] || TEMPLATES_GENERAL.hype;
+  if (category && TEMPLATES_BY_CATEGORY[category]) {
+    const catTones = TEMPLATES_BY_CATEGORY[category][tone] || TEMPLATES_BY_CATEGORY[category].hype || [];
+    pool = [...pool, ...catTones];
+  }
+
+  const template = pool[Math.floor(Math.random() * pool.length)];
+  let tweet = template.replace(/{product}/g, product).replace(/{url}/g, affiliateUrl).replace(/{trends}/g, allTags);
+
+  if (tweet.length > 280) {
+    const suffix = `\n${affiliateUrl}\n${allTags}`;
+    const maxText = 280 - suffix.length - 4;
+    const lines = tweet.split('\n').slice(0, -2);
+    const text = lines.join('\n');
+    tweet = (text.length > maxText ? text.substring(0, maxText) + '…' : text) + suffix;
+  }
+
+  return { success: true, tweet, charCount: tweet.length };
+});
+
+// ── معالجات الترخيص والمصادقة ────────────────────
+ipcMain.handle('check-license', async () => {
+  const valid = await checkStoredLicense();
+  return { valid };
+});
+
+ipcMain.handle('verify-license', async (_, code) => {
+  const result = await verifyLicense(code);
+  if (result.valid) {
+    db.prepare(`INSERT OR REPLACE INTO auth (id, username, name, profile_image) VALUES (2, ?, ?, '')`)
+      .run(code, result.plan || 'active');
+  }
+  return result;
+});
+
+ipcMain.handle('get-auth', async () => {
+  const stored = db.prepare('SELECT * FROM auth WHERE id=1').get();
+  return stored || { username: 'مستخدم', name: 'ناشر', profile_image: '' };
+});
+
+ipcMain.handle('logout', async () => {
+  db.prepare('DELETE FROM auth WHERE id=2').run();
+  return { success: true };
+});
+
+ipcMain.handle('start-oauth', async () => {
+  return { success: false, error: 'غير مفعّل' };
+});
+
+// ── معالجات التحديث ──────────────────────────────
+ipcMain.handle('check-update', async () => {
+  await checkForUpdates(false);
+  return { version: APP_VERSION };
+});
+
+ipcMain.handle('get-version', () => ({ version: APP_VERSION }));
+
+ipcMain.handle('open-releases', () => {
+  shell.openExternal('https://github.com/drfajry/tweetpilot-desktop/releases/latest');
+});
+
+// ── معالجات مساعدة ───────────────────────────────
+ipcMain.handle('open-external', (_, url) => {
+  shell.openExternal(url);
+});
+
+ipcMain.handle('copy-to-clipboard', (_, text) => {
+  const { clipboard } = require('electron');
+  clipboard.writeText(text);
+  return true;
+});
+
 ipcMain.handle('puppeteer-post', async (_, { content }) => {
   if (content.length > 280) return { success: false, error: `التغريدة تتجاوز 280 حرفاً` };
   const result = await postWithPuppeteer(content);
