@@ -1,6 +1,6 @@
 {
   "name": "nashir",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "ناشر - النشر الذكي على منصات التواصل",
   "author": "Nashir",
   "main": "main.js",
@@ -35,7 +35,8 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "renderer/icon.ico"
+      "icon": "renderer/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": true,
