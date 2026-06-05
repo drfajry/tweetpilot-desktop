@@ -648,19 +648,45 @@ async function deleteSched(id){
 }
 
 function showUpdateBanner(data){
-  // إزالة أي banner قديم
   document.getElementById('updateBanner')?.remove();
   const banner = document.createElement('div');
   banner.id = 'updateBanner';
-  banner.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#1d9bf0);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:13px;flex-shrink:0';
+  banner.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#1d9bf0);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-size:13px;flex-shrink:0;gap:12px;flex-wrap:wrap';
   banner.innerHTML = `
-    <span>🆕 إصدار جديد متاح (v${data.latest}) — أنت على v${data.current}</span>
-    <div style="display:flex;gap:8px">
-      <button onclick="window.api.openReleases()" style="background:#fff;color:#7c3aed;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">تحديث الآن ↗</button>
-      <button onclick="document.getElementById('updateBanner').remove()" style="background:transparent;border:1px solid #ffffff55;color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer">لاحقاً</button>
+    <span id="updateBannerText">🆕 إصدار جديد متاح (v${data.latest}) — أنت على v${data.current}</span>
+    <div id="updateBannerActions" style="display:flex;gap:8px;align-items:center">
+      <button id="btnUpdateNow" style="background:#fff;color:#7c3aed;border:none;border-radius:8px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer">⬇️ تحديث الآن</button>
+      <button onclick="document.getElementById('updateBanner').remove()" style="background:transparent;border:1px solid #ffffff55;color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer">لاحقاً</button>
     </div>`;
-  // أضفه بعد الهيدر
   document.querySelector('.hdr').after(banner);
+
+  // زر التحديث — يبدأ التحميل داخل التطبيق
+  document.getElementById('btnUpdateNow').addEventListener('click', () => {
+    document.getElementById('updateBannerActions').innerHTML = '<span style="color:#fff">⏳ جاري بدء التحميل...</span>';
+    window.api.downloadUpdate();
+  });
+
+  // شريط التقدم
+  window.api.onUpdateProgress(p => {
+    const text = document.getElementById('updateBannerText');
+    const actions = document.getElementById('updateBannerActions');
+    if(text) text.innerHTML = `⬇️ جاري تحميل التحديث... ${p.percent}% (${p.speed} KB/s)`;
+    if(actions) actions.innerHTML = `<div style="width:120px;height:8px;background:#ffffff33;border-radius:4px;overflow:hidden"><div style="width:${p.percent}%;height:100%;background:#fff;transition:width .3s"></div></div>`;
+  });
+
+  // اكتمل التحميل
+  window.api.onUpdateDownloaded(() => {
+    const text = document.getElementById('updateBannerText');
+    const actions = document.getElementById('updateBannerActions');
+    if(text) text.innerHTML = '✅ تم تحميل التحديث — جاهز للتثبيت';
+    if(actions) actions.innerHTML = `<button onclick="window.api.installUpdate()" style="background:#00c896;color:#fff;border:none;border-radius:8px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer">🔄 إعادة التشغيل والتثبيت</button>`;
+  });
+
+  // خطأ
+  window.api.onUpdateError(e => {
+    const text = document.getElementById('updateBannerText');
+    if(text) text.innerHTML = '❌ فشل التحديث: ' + (e.error || 'خطأ غير معروف');
+  });
 }
 
 function showPaymentPage(){
