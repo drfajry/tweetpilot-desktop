@@ -49,23 +49,52 @@ function createMainWindow() {
   mainWindow.setMenuBarVisibility(false);
 } // ← غيّر هذا عند كل إصدار جديد
 
-// ── التحقق من التحديثات ───────────────────────────
+// ── التحقق من التحديثات بـ electron-updater ──────
+let autoUpdater = null;
+try {
+  autoUpdater = require('electron-updater').autoUpdater;
+  autoUpdater.autoDownload = false; // لا يحمّل إلا عند ضغط المستخدم
+  autoUpdater.autoInstallOnAppQuit = true;
+} catch(e) {
+  console.log('electron-updater غير متاح:', e.message);
+}
+
+function setupAutoUpdater() {
+  if (!autoUpdater) return;
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update-available', {
+      current: APP_VERSION,
+      latest: info.version,
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    mainWindow?.webContents.send('update-not-available', { version: APP_VERSION });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update-progress', {
+      percent: Math.round(progress.percent),
+      speed: Math.round(progress.bytesPerSecond / 1024),
+    });
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update-downloaded', {});
+  });
+
+  autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update-error', { error: err.message });
+  });
+}
+
 async function checkForUpdates(silent = false) {
+  if (!autoUpdater) return;
   try {
-    const res = await fetch(`${LICENSE_SERVER}/api/version`);
-    const data = await res.json();
-    if (data.version && data.version !== APP_VERSION) {
-      // إصدار جديد متاح
-      mainWindow?.webContents.send('update-available', {
-        current: APP_VERSION,
-        latest: data.version,
-        url: data.download_url || 'https://github.com/drfajry/tweetpilot-desktop/releases/latest',
-      });
-    } else if (!silent) {
-      mainWindow?.webContents.send('update-not-available', { version: APP_VERSION });
-    }
+    await autoUpdater.checkForUpdates();
   } catch(e) {
-    console.log('[update-check] failed:', e.message);
+    if (!silent) mainWindow?.webContents.send('update-error', { error: e.message });
   }
 }
 
@@ -556,6 +585,16 @@ ipcMain.handle('check-update', async () => {
   return { version: APP_VERSION };
 });
 
+ipcMain.handle('download-update', async () => {
+  if (!autoUpdater) return { success: false, error: 'التحديث غير متاح' };
+  try { autoUpdater.downloadUpdate(); return { success: true }; }
+  catch(e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('install-update', () => {
+  if (autoUpdater) autoUpdater.quitAndInstall();
+});
+
 ipcMain.handle('get-version', () => ({ version: APP_VERSION }));
 
 ipcMain.handle('open-releases', () => {
@@ -876,6 +915,7 @@ app.whenReady().then(() => {
 
   initDB();
   createMainWindow();
+  setupAutoUpdater();
 
   // تحقق من التحديثات عند الفتح (بعد 5 ثواني)
   setTimeout(() => checkForUpdates(true), 5000);
