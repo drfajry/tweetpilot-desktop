@@ -902,12 +902,12 @@ function renderS1(){
         {k:'food',l:'🍔 طعام'},
         {k:'beauty',l:'💄 جمال'},
         {k:'home',l:'🏠 منزل'},
-      ].map(c=>`<button class="tab ${S.category===c.k?'active':''}" onclick="S.category='${c.k}';render()">${c.l}</button>`).join('')}
+      ].map(c=>`<button class="tab ${S.category===c.k?'active':''}" onclick="setCategory('${c.k}')">${c.l}</button>`).join('')}
     </div>
   </div>
   <div class="card">
     <div class="ct">🎭 أسلوب التغريدة</div>
-    <div class="tones">${TONES.map(t=>`<button class="tone ${S.tone===t.id?'active':''}" onclick="S.tone='${t.id}';render()">${t.l}</button>`).join('')}</div>
+    <div class="tones">${TONES.map(t=>`<button class="tone ${S.tone===t.id?'active':''}" onclick="setTone('${t.id}')">${t.l}</button>`).join('')}</div>
   </div>
   <button class="btn btn-pu" id="btnGen" style="margin-bottom:12px">✨ توليد التغريدة</button>
   <div id="genLd" style="display:none;margin-bottom:12px"><div class="lbar"><div class="lfill"></div></div></div>
@@ -1188,6 +1188,15 @@ async function logout(){
 
 function goStep(n){ S.step=n; render(); }
 function goPage(p){ S.page=p; render(); }
+function saveS1Inputs(){
+  const af = document.getElementById('afUrl')?.value;
+  const pd = document.getElementById('prodDesc')?.value;
+  if(af !== undefined) S.afUrl = af;
+  if(pd !== undefined) S.prodDesc = pd;
+}
+window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
+window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
+
 function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; S.postResult=null; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\n/g,'\\n'); }
