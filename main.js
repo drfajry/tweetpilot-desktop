@@ -154,10 +154,10 @@ function fetchTrends24(region) {
       sa: 'saudi-arabia',
       ae: 'united-arab-emirates',
       eg: 'egypt',
-      world: 'worldwide',
+      world: '',
     };
-    const regionPath = PATHS[region] || PATHS.sa;
-    const url = `https://trends24.in/${regionPath}/`;
+    const regionPath = PATHS[region] !== undefined ? PATHS[region] : PATHS.sa;
+    const url = regionPath ? `https://trends24.in/${regionPath}/` : `https://trends24.in/`;
 
     const request = net.request({
       url,
