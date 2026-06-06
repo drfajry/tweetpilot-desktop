@@ -317,7 +317,16 @@ async function generateSeo(){
 
   const trend = SEO_STATE.selTrend !== null ? (SEO_STATE.trends[SEO_STATE.selTrend]?.title || '') : '';
   const trendLine = trend ? `\n🔥 من وحي ترند: ${trend}\n` : '';
-  const sub = '✅ اشترك في القناة وفعّل الجرس 🔔 ليصلك كل جديد';
+  const sub = '👍 إذا أعجبك الفيديو اضغط لايك واشترك في القناة وفعّل الجرس 🔔';
+  const ask = {
+    entertainment: '😂 شاركنا في التعليقات أكثر مقطع ضحّكك!',
+    review: '💬 هل جربت هذا المنتج؟ شاركنا رأيك في التعليقات',
+    tutorial: '💬 لو عندك سؤال اكتبه في التعليقات وراح أساعدك',
+    vlog: '💬 وش رأيك في يومي؟ خبّرني في التعليقات',
+    gaming: '🎮 وش اللعبة اللي تبي ألعبها الجاية؟ اكتبها بالتعليق',
+    cooking: '🍽️ جربت الوصفة؟ صوّرها وشاركنا النتيجة في التعليقات',
+  };
+  const askLine = ask[SEO_STATE.vtype] || '';
   const sep = '━━━━━━━━━━━━━━━━━━━━';
 
   let seoTitle = '', desc = '', tags = '';
@@ -327,7 +336,7 @@ async function generateSeo(){
     desc = `${title}\n\n` +
       `محتوى ترفيهي خفيف يضحك من القلب 😂\n` +
       `إذا ضحكت لا تنسى تشارك الفيديو مع أصحابك! 🤣\n${trendLine}\n` +
-      `${sep}\n${sub}\n\n` +
+      `${sep}\n${askLine}\n${sub}\n\n` +
       `#ترفيه #كوميديا #ضحك #مقاطع_مضحكة #فيصل`;
     tags = `${title}, مقاطع مضحكة, كوميديا, ترفيه, ضحك, فكاهة, ${trend||'منوعات'}`;
   }
@@ -338,7 +347,7 @@ async function generateSeo(){
       `${sep}\n📌 محتوى الفيديو:\n` +
       `• نظرة عامة\n• المميزات\n• العيوب\n• هل يستحق الشراء؟\n\n` +
       `${afUrl ? `${sep}\n🔗 رابط المنتج:\n${afUrl}\n\n` : ''}` +
-      `${sep}\n${sub}\n\n` +
+      `${sep}\n${askLine}\n${sub}\n\n` +
       `#مراجعة #تجربة #${title.split(' ')[0]}`;
     tags = `مراجعة ${title}, تجربة ${title}, ${title} review, هل يستحق, ${trend||'مراجعات'}`;
   }
@@ -348,7 +357,7 @@ async function generateSeo(){
       `تابع الخطوات معي وراح تتعلم بسهولة 👍\n${trendLine}\n` +
       `${sep}\n📌 ما ستتعلمه:\n` +
       `• الأساسيات\n• الخطوات العملية\n• نصائح مهمة\n• أخطاء شائعة تتجنبها\n\n` +
-      `${sep}\n${sub}\n\n` +
+      `${sep}\n${askLine}\n${sub}\n\n` +
       `#شرح #تعليم #${title.split(' ')[0]} #خطوة_بخطوة`;
     tags = `كيف ${title}, شرح ${title}, تعليم, طريقة, دليل, ${trend||'تعليمي'}`;
   }
@@ -357,7 +366,7 @@ async function generateSeo(){
     desc = `📹 ${title}\n\n` +
       `يومياتي وتجاربي أشاركها معكم 💛\n` +
       `رافقوني في هذا اليوم! ${trendLine}\n` +
-      `${sep}\n${sub}\n\n` +
+      `${sep}\n${askLine}\n${sub}\n\n` +
       `#فلوق #يوميات #vlog #حياتي`;
     tags = `${title}, فلوق, يوميات, vlog, يوم في حياتي, ${trend||'منوعات'}`;
   }
@@ -365,7 +374,7 @@ async function generateSeo(){
     seoTitle = `${title} 🎮`;
     desc = `🎮 ${title}\n\n` +
       `جيمنق ومتعة وتحديات! انضم للحماس 🔥\n${trendLine}\n` +
-      `${sep}\n${sub}\n\n` +
+      `${sep}\n${askLine}\n${sub}\n\n` +
       `#ألعاب #جيمنق #gaming #${title.split(' ')[0]}`;
     tags = `${title}, ألعاب, جيمنق, gaming, gameplay, ${trend||'ألعاب'}`;
   }
@@ -374,7 +383,7 @@ async function generateSeo(){
     desc = `🍳 طريقة عمل ${title} خطوة بخطوة\n\n` +
       `وصفة سهلة ولذيذة تقدر تسويها في البيت 👩‍🍳\n${trendLine}\n` +
       `${sep}\n📌 المكونات والطريقة في الفيديو\n\n` +
-      `${sep}\n${sub}\n\n` +
+      `${sep}\n${askLine}\n${sub}\n\n` +
       `#طبخ #وصفات #${title.split(' ')[0]} #أكل`;
     tags = `طريقة ${title}, وصفة ${title}, طبخ, أكل, وصفات سهلة, ${trend||'طبخ'}`;
   }
