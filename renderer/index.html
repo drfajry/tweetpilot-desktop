@@ -98,7 +98,7 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 <div class="hdr">
   <div class="logo">
     <div class="logo-ic">✈️</div>
-    <div><div class="logo-t">ناشر</div><div class="logo-s">النشر الذكي على منصات التواصل</div></div>
+    <div><div class="logo-t">ناشر</div><div class="logo-s">نشرك أذكى على مواقع التواصل الاجتماعي</div></div>
   </div>
   <div class="steps" id="steps"></div>
   <div class="hdr-r" id="hdrR"></div>
@@ -207,7 +207,7 @@ function renderLicense(){
   return `<div class="cs">
     <div class="cs-ic">✈️</div>
     <div class="cs-t">ناشر</div>
-    <div class="cs-s">أداة التسويق بالعمولة الذكية على إكس</div>
+    <div class="cs-s">نشرك أذكى على مواقع التواصل الاجتماعي</div>
     <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px">
       <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
       <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل الكود</button>
@@ -1242,14 +1242,14 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.3'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.4'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
   return `<div style="max-width:440px;margin:0 auto;text-align:center;padding-top:30px">
     <div style="font-size:56px;margin-bottom:12px">✈️</div>
     <div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:6px">ناشر</div>
-    <div style="font-size:14px;color:#6b7280;margin-bottom:28px">النشر الذكي على منصات التواصل</div>
+    <div style="font-size:14px;color:#6b7280;margin-bottom:28px">نشرك أذكى على مواقع التواصل الاجتماعي</div>
 
     <div class="card" style="text-align:right">
       <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a2540">
