@@ -816,7 +816,7 @@ function renderHdr(){
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
       <button class="btn btn-g btn-sm" onclick="goPage('about')" style="${S.page==='about'?'color:#1d9bf0;border-color:#1d9bf0':''}">ℹ️ حول</button>
-      <div class="ubadge"><span class="uname">@${S.user.username}</span></div>
+      <div class="ubadge"><span class="uname">🔑 ${S.user.username}</span></div>
       <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="logout()">خروج</button>`;
   } else { st.innerHTML=''; hr.innerHTML=''; }
 }
@@ -1242,7 +1242,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.4'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.5'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
