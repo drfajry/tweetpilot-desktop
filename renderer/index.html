@@ -148,7 +148,15 @@ function buildOrderMsg(data){
 
 
 async function init(){
-  // أولاً: تحقق من الترخيص
+  // اعرض شاشة تحميل أثناء التحقق (قد يستغرق وقتاً لو السيرفر نائم)
+  document.getElementById('app').innerHTML = `<div class="cs">
+    <div class="cs-ic">✈️</div>
+    <div class="cs-t">ناشر</div>
+    <div style="margin-top:16px"><span class="spin"></span> <span style="color:#6b7280">جاري التحقق من الاشتراك...</span></div>
+  </div>`;
+  renderHdr();
+
+  // تحقق من الترخيص
   const lic = await window.api.checkLicense();
   if (!lic.valid) {
     if (lic.reason === 'no_connection') {
@@ -834,7 +842,7 @@ function renderS0(){
       <button class="tab ${S.platform==='tiktok'?'active':''}" onclick="S.platform='tiktok';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🎵 تيك توك</button>
       <button class="tab ${S.platform==='instagram'?'active':''}" onclick="S.platform='instagram';S.trends=[];S.trendsReal=false;S.trendsError='';render()">📸 انستقرام</button>
     </div>
-    ${S.platform==='x'?'':`<div style="font-size:11px;color:#6b7280;margin-bottom:8px">${S.platform==='tiktok'?'🎵 ترندات تيك توك السعودية':'📸 ترندات انستقرام'}</div>`}
+    ${S.platform==='x'?'':`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات Google السعودية اللحظية — صالحة للنشر على ${S.platform==='tiktok'?'تيك توك':'انستقرام'} وسناب شات وكل المنصات</div>`}
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
@@ -1216,7 +1224,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.2.7'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.0'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
