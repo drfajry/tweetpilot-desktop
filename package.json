@@ -1,6 +1,6 @@
 {
   "name": "nashir",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "description": "ناشر - النشر الذكي على منصات التواصل",
   "author": "Nashir",
   "main": "main.js",
@@ -40,7 +40,8 @@
     },
     "nsis": {
       "oneClick": true,
-      "installerLanguages": ["en_US"]
+      "installerLanguages": ["en_US"],
+      "shortcutName": "ناشر"
     }
   }
 }
