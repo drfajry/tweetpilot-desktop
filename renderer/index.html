@@ -207,7 +207,7 @@ function renderLicense(){
   return `<div class="cs">
     <div class="cs-ic">✈️</div>
     <div class="cs-t">ناشر</div>
-    <div class="cs-s">أداة التسويق بالعمولة الذكية على X</div>
+    <div class="cs-s">أداة التسويق بالعمولة الذكية على إكس</div>
     <div style="width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px">
       <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
       <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل الكود</button>
@@ -261,7 +261,7 @@ function renderSeoPage(){
     {id:'cooking',       l:'🍳 طبخ'},
   ];
   const needsLink = ['review'].includes(SEO_STATE.vtype);
-  return `<div class="ptit">📈 SEO يوتيوب</div>
+  return `<div class="ptit">📈 تحسين يوتيوب (SEO)</div>
   <div class="psub">اختر نوع الفيديو واكتب العنوان — كل نوع له وصف مختلف تماماً</div>
 
   <div class="card">
@@ -683,7 +683,7 @@ function renderPaymentPage(){
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
         <div>✅ توليد تغريدات ذكية بالذكاء الاصطناعي</div>
-        <div>✅ ترندات X ويوتيوب مباشرة</div>
+        <div>✅ ترندات إكس ويوتيوب مباشرة</div>
         <div>✅ بحث منتجات أمازون ونون وعلي إكسبريس</div>
         <div>✅ سحب صور المنتجات تلقائياً</div>
         <div>✅ إرسال لواتساب بنقرة</div>
@@ -812,7 +812,7 @@ function renderHdr(){
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
       <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">🕐 جدولة</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 SEO</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 يوتيوب</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
       <button class="btn btn-g btn-sm" onclick="goPage('about')" style="${S.page==='about'?'color:#1d9bf0;border-color:#1d9bf0':''}">ℹ️ حول</button>
@@ -826,7 +826,7 @@ function renderConnect(){
     <div class="cs-ic">✈️</div>
     <div class="cs-t">مرحباً بك في ناشر</div>
     <div class="cs-s">اضغط الزر للتحقق من حسابك والبدء</div>
-    <button class="btn-big" id="btnConn">🔗 ربط حساب X</button>
+    <button class="btn-big" id="btnConn">🔗 ربط حساب إكس</button>
   </div>`;
 }
 function bindConnect(){
@@ -834,7 +834,7 @@ function bindConnect(){
     const btn=document.getElementById('btnConn');
     btn.disabled=true; btn.textContent='⏳ جاري الربط...';
     const r=await window.api.startOAuth();
-    if(!r.success){ alert('فشل: '+r.error); btn.disabled=false; btn.textContent='🔗 ربط حساب X'; }
+    if(!r.success){ alert('فشل: '+r.error); btn.disabled=false; btn.textContent='🔗 ربط حساب إكس'; }
   });
 }
 
@@ -855,11 +855,12 @@ function renderS0(){
     <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
     <div class="ct" style="margin-bottom:8px">📱 المنصة</div>
     <div class="tabs">
-      <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 X</button>
-      <button class="tab ${S.platform==='tiktok'?'active':''}" onclick="S.platform='tiktok';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🎵 تيك توك</button>
-      <button class="tab ${S.platform==='instagram'?'active':''}" onclick="S.platform='instagram';S.trends=[];S.trendsReal=false;S.trendsError='';render()">📸 انستقرام</button>
+      <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 إكس</button>
+      <button class="tab ${S.platform==='google'?'active':''}" onclick="S.platform='google';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🔥 ترند قوقل</button>
+      <button class="tab" style="opacity:.5;cursor:not-allowed" onclick="alert('🎵 ترندات تيك توك — قريباً!')">🎵 تيك توك <span style="font-size:9px;background:#f59e0b33;color:#f59e0b;border-radius:6px;padding:1px 5px">قريباً</span></button>
+      <button class="tab" style="opacity:.5;cursor:not-allowed" onclick="alert('📸 ترندات انستقرام — قريباً!')">📸 انستقرام <span style="font-size:9px;background:#f59e0b33;color:#f59e0b;border-radius:6px;padding:1px 5px">قريباً</span></button>
     </div>
-    ${S.platform==='x'?'':`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات Google السعودية اللحظية — صالحة للنشر على ${S.platform==='tiktok'?'تيك توك':'انستقرام'} وسناب شات وكل المنصات</div>`}
+    ${S.platform==='google'?`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات قوقل السعودية اللحظية — صالحة للنشر على كل المنصات (تيك توك، انستقرام، سناب شات)</div>`:''}
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
@@ -1028,7 +1029,7 @@ function renderS2(){
   </div>`;
   if(S.copySuccess) return `<div class="succ-copy">
     <div class="succ-ic">📋</div>
-    <div class="succ-t">تم النسخ! الصقها في X</div>
+    <div class="succ-t">تم النسخ! الصقها في إكس</div>
     <div style="font-size:12px;color:#6b7280;margin-bottom:20px">التغريدة جاهزة في الحافظة</div>
     <div class="succ-b">
       <button class="btn btn-p" style="width:auto;padding:10px 22px" onclick="resetW()">+ تغريدة جديدة</button>
@@ -1058,7 +1059,7 @@ function renderS2(){
     <button class="btn btn-pu" id="btnSave" ${overLimit?'disabled':''}>💾 حفظ في المحفوظات</button>
     <div style="display:flex;gap:10px">
       <button class="btn btn-g" onclick="S.step=1;render()">← تعديل التغريدة</button>
-      <button class="btn btn-g" onclick="openX()">فتح X ↗</button>
+      <button class="btn btn-g" onclick="openX()">فتح إكس ↗</button>
     </div>
   </div>
   <div id="puppeteerStatus" style="display:none;margin-top:10px;text-align:center;font-size:13px;color:#1d9bf0"></div>`;
@@ -1130,7 +1131,7 @@ function renderSavedPage(){
     <div class="saved-actions">
       <button class="btn btn-g btn-sm" onclick="copySaved('${escAttr(t.text)}')">📋 نسخ</button>
       <button class="btn btn-g btn-sm" style="background:#25D366;border-color:#25D366;color:#fff" onclick="openWhatsApp('${escAttr(t.text)}')">📲 واتساب</button>
-      <button class="btn btn-g btn-sm" onclick="openXWith('${escAttr(t.text)}')">فتح X</button>
+      <button class="btn btn-g btn-sm" onclick="openXWith('${escAttr(t.text)}')">فتح إكس</button>
       <button class="btn btn-g btn-sm" style="color:#ff6b6b;border-color:#ff444433" onclick="deleteSavedItem(${t.id})">🗑️</button>
     </div>
   </div>`).join('')}`;
@@ -1241,7 +1242,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.1'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.3'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
