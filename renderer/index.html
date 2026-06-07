@@ -161,6 +161,9 @@ async function init(){
   if (!lic.valid) {
     if (lic.reason === 'no_connection') {
       document.getElementById('app').innerHTML = renderNoConnection();
+    } else if (lic.reason === 'other_device') {
+      document.getElementById('app').innerHTML = renderOtherDevice();
+      bindLicense();
     } else {
       document.getElementById('app').innerHTML = renderLicense();
       bindLicense();
@@ -175,6 +178,20 @@ async function init(){
   window.api.onUpdateAvailable(data => { S.updateAvailable=data; showUpdateBanner(data); });
   loadSaved();
   render();
+}
+
+function renderOtherDevice(){
+  return `<div class="cs">
+    <div class="cs-ic">🔒</div>
+    <div class="cs-t">الكود مستخدم على جهاز آخر</div>
+    <div class="cs-s">هذا الكود مفعّل بالفعل على جهاز آخر. كل كود يعمل على جهاز واحد فقط. للاستخدام على هذا الجهاز، تواصل معنا أو أدخل كوداً جديداً.</div>
+    <div style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px;margin-top:8px">
+      <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل كود جديد</button>
+      <div id="licError" style="color:#ff8080;font-size:13px;text-align:center"></div>
+      <button class="btn btn-g" style="width:100%;padding:11px" onclick="openWhatsApp(SUPPORT_MSG_HELP)">💬 تواصل مع الدعم</button>
+    </div>
+  </div>`;
 }
 
 function renderNoConnection(){
@@ -1224,7 +1241,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.0'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.1'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
