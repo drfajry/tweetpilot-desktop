@@ -151,8 +151,12 @@ async function init(){
   // أولاً: تحقق من الترخيص
   const lic = await window.api.checkLicense();
   if (!lic.valid) {
-    document.getElementById('app').innerHTML = renderLicense();
-    bindLicense();
+    if (lic.reason === 'no_connection') {
+      document.getElementById('app').innerHTML = renderNoConnection();
+    } else {
+      document.getElementById('app').innerHTML = renderLicense();
+      bindLicense();
+    }
     renderHdr();
     return;
   }
@@ -163,6 +167,15 @@ async function init(){
   window.api.onUpdateAvailable(data => { S.updateAvailable=data; showUpdateBanner(data); });
   loadSaved();
   render();
+}
+
+function renderNoConnection(){
+  return `<div class="cs">
+    <div class="cs-ic">📡</div>
+    <div class="cs-t">يتطلب اتصال بالإنترنت</div>
+    <div class="cs-s">ناشر يحتاج اتصالاً بالإنترنت للتحقق من اشتراكك عند كل تشغيل. تأكد من اتصالك ثم أعد فتح التطبيق.</div>
+    <button class="btn-big" style="width:auto;margin-top:8px" onclick="location.reload()">🔄 إعادة المحاولة</button>
+  </div>`;
 }
 
 function renderLicense(){
@@ -1203,7 +1216,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.2.5'; // يُحدّث تلقائياً من main
+let APP_VER = '1.2.7'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
