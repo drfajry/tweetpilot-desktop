@@ -128,7 +128,7 @@ const PAYMENT_INFO = {
   stc:   '0500043462',
   urpay: '0500043462',
   bank:  { iban: 'SA7980000044060801614001', account: '44000000100060861400012' },
-  price: 99,
+  price: 49,
 };
 
 // FIX #4: واتساب وX يفتحان في المتصفح الخارجي
@@ -141,7 +141,7 @@ function buildOrderMsg(data){
     `الاسم: ${data.name}\n` +
     `الجوال: ${data.phone}\n` +
     `طريقة الدفع: ${data.method}\n` +
-    `المبلغ: 99 ريال\n` +
+    `المبلغ: ${PAYMENT_INFO.price} ريال\n` +
     `${data.notes ? 'ملاحظات: ' + data.notes + '\n' : ''}` +
     `\n⬇️ سأرفق صورة الإيصال في الرسالة التالية`;
 }
@@ -176,7 +176,7 @@ function renderLicense(){
       <div id="licError" style="color:#ff8080;font-size:13px;text-align:center"></div>
       <div style="border-top:1px solid #1a2540;margin:4px 0"></div>
       <button class="btn-big" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)" onclick="showPaymentPage()">
-        🛒 اشترك الآن — 99 ريال/سنة
+        🛒 اشترك الآن — ${PAYMENT_INFO.price} ريال/سنة
       </button>
       <button class="btn btn-g" style="width:100%;padding:11px" onclick="openWhatsApp(SUPPORT_MSG_HELP)">
         💬 الدعم الفني — 0559099222
@@ -641,7 +641,7 @@ function showPaymentPage(){
 function renderPaymentPage(){
   return `<div style="max-width:480px;margin:0 auto">
     <div class="ptit">🛒 إتمام الاشتراك</div>
-    <div class="psub">اشتراك سنوي — 99 ريال</div>
+    <div class="psub">اشتراك سنوي — ${PAYMENT_INFO.price} ريال</div>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
         <div>✅ توليد تغريدات ذكية بالذكاء الاصطناعي</div>
@@ -700,16 +700,16 @@ function bindPaymentPage(){
     if(method === 'stc'){
       details.innerHTML = `<div style="color:#a78bfa;font-weight:600;margin-bottom:6px">📱 STC Pay</div>
         <div>ادفع على الرقم: <span style="color:#fff;font-weight:700;font-size:15px">${PAYMENT_INFO.stc}</span></div>
-        <div style="color:#6b7280;margin-top:4px">المبلغ: <span style="color:#f59e0b;font-weight:700">99 ريال</span></div>`;
+        <div style="color:#6b7280;margin-top:4px">المبلغ: <span style="color:#f59e0b;font-weight:700">${PAYMENT_INFO.price} ريال</span></div>`;
     } else if(method === 'urpay'){
       details.innerHTML = `<div style="color:#a78bfa;font-weight:600;margin-bottom:6px">💜 URPay</div>
         <div>ادفع على الرقم: <span style="color:#fff;font-weight:700;font-size:15px">${PAYMENT_INFO.urpay}</span></div>
-        <div style="color:#6b7280;margin-top:4px">المبلغ: <span style="color:#f59e0b;font-weight:700">99 ريال</span></div>`;
+        <div style="color:#6b7280;margin-top:4px">المبلغ: <span style="color:#f59e0b;font-weight:700">${PAYMENT_INFO.price} ريال</span></div>`;
     } else {
       details.innerHTML = `<div style="color:#a78bfa;font-weight:600;margin-bottom:6px">🏦 تحويل بنكي</div>
         <div style="margin-bottom:4px">رقم الحساب: <span style="color:#fff;font-weight:600">${PAYMENT_INFO.bank.account}</span></div>
         <div style="margin-bottom:4px">الآيبان: <span style="color:#fff;font-weight:600">${PAYMENT_INFO.bank.iban}</span></div>
-        <div style="color:#6b7280">المبلغ: <span style="color:#f59e0b;font-weight:700">99 ريال</span></div>`;
+        <div style="color:#6b7280">المبلغ: <span style="color:#f59e0b;font-weight:700">${PAYMENT_INFO.price} ريال</span></div>`;
     }
   };
   document.getElementById('btnSubmitOrder')?.addEventListener('click', () => {
@@ -759,6 +759,8 @@ function render(){
   } else if(S.page==='schedule'){
     loadScheduledList().then(()=>{ app.innerHTML=renderSchedulePage(); bindSchedulePage(); });
     app.innerHTML='<div style="text-align:center;padding:40px;color:#6b7280"><span class="spin"></span> تحميل...</div>';
+  } else if(S.page==='about'){
+    app.innerHTML=renderAboutPage();
   }
 }
 
@@ -775,6 +777,7 @@ function renderHdr(){
       <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 SEO</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('about')" style="${S.page==='about'?'color:#1d9bf0;border-color:#1d9bf0':''}">ℹ️ حول</button>
       <div class="ubadge"><span class="uname">@${S.user.username}</span></div>
       <button class="btn btn-g" style="width:auto;padding:6px 12px;font-size:11px" onclick="logout()">خروج</button>`;
   } else { st.innerHTML=''; hr.innerHTML=''; }
@@ -814,8 +817,11 @@ function renderS0(){
     <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
     <div class="ct" style="margin-bottom:8px">📱 المنصة</div>
     <div class="tabs">
-      <button class="tab active">🐦 X (تويتر)</button>
+      <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 X</button>
+      <button class="tab ${S.platform==='tiktok'?'active':''}" onclick="S.platform='tiktok';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🎵 تيك توك</button>
+      <button class="tab ${S.platform==='instagram'?'active':''}" onclick="S.platform='instagram';S.trends=[];S.trendsReal=false;S.trendsError='';render()">📸 انستقرام</button>
     </div>
+    ${S.platform==='x'?'':`<div style="font-size:11px;color:#6b7280;margin-bottom:8px">${S.platform==='tiktok'?'🎵 ترندات تيك توك السعودية':'📸 ترندات انستقرام'}</div>`}
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
@@ -1196,6 +1202,34 @@ function saveS1Inputs(){
 }
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
+
+let APP_VER = '1.2.5'; // يُحدّث تلقائياً من main
+window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
+
+function renderAboutPage(){
+  return `<div style="max-width:440px;margin:0 auto;text-align:center;padding-top:30px">
+    <div style="font-size:56px;margin-bottom:12px">✈️</div>
+    <div style="font-size:28px;font-weight:800;color:#fff;margin-bottom:6px">ناشر</div>
+    <div style="font-size:14px;color:#6b7280;margin-bottom:28px">النشر الذكي على منصات التواصل</div>
+
+    <div class="card" style="text-align:right">
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a2540">
+        <span style="color:#6b7280">رقم النسخة</span>
+        <span style="color:#1d9bf0;font-weight:700">v${APP_VER}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a2540">
+        <span style="color:#6b7280">التطوير</span>
+        <span style="color:#e8eaf0;font-weight:600">د. فيصل الفجري</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0">
+        <span style="color:#6b7280">الدعم الفني</span>
+        <span style="color:#25D366;font-weight:600;cursor:pointer" onclick="openWhatsApp(SUPPORT_MSG_HELP)">0559099222</span>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:#3a4456;margin-top:20px">© ${new Date().getFullYear()} ناشر — جميع الحقوق محفوظة</div>
+  </div>`;
+}
 
 function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; S.postResult=null; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
