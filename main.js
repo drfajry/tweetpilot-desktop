@@ -28,7 +28,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.2.3';
+const APP_VERSION    = '1.2.5';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -404,36 +404,134 @@ async function cdpPost(content) {
   });
 }
 
+// ── النشر عبر نافذة Electron داخلية ───────────────
+// نافذة X مدمجة — المستخدم يسجل دخوله مرة، الجلسة محفوظة
+let xWindow = null;
+
+function getXSession() {
+  // جلسة منفصلة دائمة لـ X
+  return session.fromPartition('persist:nashir-x');
+}
+
 async function postWithPuppeteer(content) {
-  // تحقق من Chrome
-  const chromePath = getChromePath();
-  if (!chromePath) return { success: false, error: 'لم يتم العثور على Chrome — ثبّت Google Chrome' };
+  return new Promise((resolve) => {
+    const xSession = getXSession();
+    const win = new BrowserWindow({
+      width: 500, height: 700,
+      show: false, // مخفية في البداية
+      webPreferences: {
+        partition: 'persist:nashir-x',
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
 
-  // جرّب الاتصال
-  let result = await cdpPost(content);
+    let done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      try { win.close(); } catch(e){}
+      resolve(result);
+    };
 
-  // لو ما فيه Chrome مفتوح بالـ debugging — افتحه
-  if (result.error === 'NO_CHROME') {
-    launchChromeDebug();
-    await new Promise(r => setTimeout(r, 5000));
-    result = await cdpPost(content);
-  }
+    const timer = setTimeout(() => finish({ success: false, error: 'انتهت المهلة' }), 40000);
 
-  if (result.error === 'NO_CHROME') {
-    return { success: false, error: 'أغلق Chrome تماماً ثم حاول مجدداً (نحتاج فتحه بوضع خاص)' };
+    win.loadURL('https://x.com/home');
+
+    win.webContents.on('did-finish-load', async () => {
+      try {
+        // تحقق من تسجيل الدخول
+        const isLoggedIn = await win.webContents.executeJavaScript(`
+          !!document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]') ||
+          !!document.querySelector('[data-testid="AppTabBar_Home_Link"]')
+        `);
+
+        if (!isLoggedIn) {
+          // أظهر النافذة ليسجل الدخول
+          clearTimeout(timer);
+          win.show();
+          win.webContents.send('login-needed');
+          // راقب تسجيل الدخول
+          const checkLogin = setInterval(async () => {
+            try {
+              const nowLoggedIn = await win.webContents.executeJavaScript(`
+                !!document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]')
+              `);
+              if (nowLoggedIn) {
+                clearInterval(checkLogin);
+                win.hide();
+                // الآن انشر
+                const result = await doPost(win, content);
+                finish(result);
+              }
+            } catch(e){}
+          }, 2000);
+          // مهلة تسجيل دخول دقيقتان
+          setTimeout(() => { clearInterval(checkLogin); finish({ success:false, error:'LOGIN_TIMEOUT' }); }, 120000);
+          return;
+        }
+
+        // مسجّل دخول — انشر مباشرة
+        clearTimeout(timer);
+        const result = await doPost(win, content);
+        finish(result);
+      } catch(e) {
+        clearTimeout(timer);
+        finish({ success: false, error: e.message });
+      }
+    });
+
+    win.webContents.on('did-fail-load', () => {
+      clearTimeout(timer);
+      finish({ success: false, error: 'فشل تحميل X — تحقق من الإنترنت' });
+    });
+  });
+}
+
+async function doPost(win, content) {
+  try {
+    // افتح نافذة الكتابة واكتب وانشر
+    const result = await win.webContents.executeJavaScript(`
+      (async () => {
+        function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+        const composeBtn = document.querySelector('a[data-testid="SideNav_NewTweet_Button"], a[href="/compose/post"]');
+        if(composeBtn) composeBtn.click();
+        await wait(2000);
+        const box = document.querySelector('[data-testid="tweetTextarea_0"], div[role="textbox"]');
+        if(!box) return 'NO_BOX';
+        box.focus();
+        document.execCommand('insertText', false, ${JSON.stringify(content)});
+        await wait(1500);
+        const postBtn = document.querySelector('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]');
+        if(!postBtn) return 'NO_BTN';
+        if(postBtn.getAttribute('aria-disabled')==='true') return 'DISABLED';
+        postBtn.click();
+        await wait(3000);
+        return 'OK';
+      })()
+    `);
+
+    if (result === 'OK') return { success: true };
+    if (result === 'NO_BOX') return { success: false, error: 'تعذر العثور على صندوق الكتابة' };
+    if (result === 'NO_BTN') return { success: false, error: 'تعذر العثور على زر النشر' };
+    if (result === 'DISABLED') return { success: false, error: 'زر النشر معطّل' };
+    return { success: false, error: 'فشل: ' + result };
+  } catch(e) {
+    return { success: false, error: e.message };
   }
-  if (result.error === 'NO_WS') {
-    return { success: false, error: 'مكتبة الاتصال غير متوفرة' };
-  }
-  return result;
 }
 
 async function openChromeForLogin() {
-  const chromePath = getChromePath();
-  if (!chromePath) return { success: false, error: 'Chrome غير موجود' };
-  launchChromeDebug();
+  // نفتح نافذة X ليسجل الدخول
+  const xSession = getXSession();
+  const win = new BrowserWindow({
+    width: 500, height: 700,
+    webPreferences: { partition: 'persist:nashir-x', contextIsolation: true, nodeIntegration: false },
+  });
+  win.loadURL('https://x.com/login');
   return { success: true };
 }
+
 
 // ── النشر بـ Puppeteer ────────────────────────────
 // ── توليد التغريدة ───────────────────────────────
@@ -713,9 +811,23 @@ ipcMain.handle('get-history', () => {
 });
 
 // ── FIX: ترندات حقيقية من Google Trends ──────────
+const TRENDS_SERVER = 'https://nashir-trends.onrender.com';
+
 ipcMain.handle('fetch-trends', async (_, { region, platform }) => {
   if (platform === 'youtube') {
     return await fetchYoutubeTrends(region);
+  }
+  if (platform === 'tiktok' || platform === 'instagram') {
+    try {
+      const res = await fetch(`${TRENDS_SERVER}/api/trends/${platform}`);
+      const data = await res.json();
+      if (data.trends && data.trends.length > 0) {
+        return { success: true, trends: data.trends, updatedAt: data.updatedAt };
+      }
+      return { success: false, error: 'الترندات غير متاحة حالياً — حاول لاحقاً', trends: [] };
+    } catch(e) {
+      return { success: false, error: 'تعذر الاتصال بسيرفر الترندات', trends: [] };
+    }
   }
   return await fetchTrends24(region);
 });
