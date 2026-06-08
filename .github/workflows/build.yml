@@ -15,14 +15,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+
+      - name: Install dependencies (with retry)
+        shell: bash
+        env:
+          ELECTRON_GET_USE_PROXY: true
+          npm_config_fetch_retries: 5
+          npm_config_fetch_retry_factor: 2
+          npm_config_fetch_retry_mintimeout: 20000
+          npm_config_fetch_retry_maxtimeout: 120000
+        run: |
+          npm install --no-audit --no-fund || npm install --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Read version
         id: pkg
         shell: bash
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - run: npm run build-win
+      - name: Build Windows installer
+        run: npm run build-win
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
