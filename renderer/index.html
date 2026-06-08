@@ -172,8 +172,6 @@ async function init(){
     return;
   }
   S.user = await window.api.getAuth();
-  window.api.onAuthSuccess(u=>{ S.user=u; render(); });
-  window.api.onAuthError(e=>{ alert('خطأ في الربط: '+e); render(); });
   // استقبال إشعار التحديث
   window.api.onUpdateAvailable(data => { S.updateAvailable=data; showUpdateBanner(data); });
   loadSaved();
@@ -1052,7 +1050,7 @@ function renderS2(){
   ${overLimit?`<div class="char-warn">⚠️ التغريدة تتجاوز 280 حرفاً</div>`:''}
   <div style="display:flex;gap:10px;flex-direction:column">
     <button class="btn btn-p" id="btnPuppeteer" ${overLimit?'disabled':''} style="font-size:15px;padding:14px;background:linear-gradient(135deg,#7c3aed,#1d9bf0)">
-      🚀 نشر تلقائي عبر Chrome
+      🚀 نشر تلقائي على إكس
     </button>
     <button class="btn btn-copy" id="btnCopy" ${overLimit?'disabled':''}>📋 نسخ للحافظة (نشر يدوي)</button>
     <button class="btn btn-g" id="btnWA" style="background:#25D366;border-color:#25D366;color:#fff;font-size:14px;padding:12px" ${overLimit?'disabled':''}>📲 إرسال لواتساب</button>
@@ -1065,50 +1063,26 @@ function renderS2(){
   <div id="puppeteerStatus" style="display:none;margin-top:10px;text-align:center;font-size:13px;color:#1d9bf0"></div>`;
 }
 function bindS2(){
-  window.api.onPuppeteerInstalling(() => {
-    const status = document.getElementById('puppeteerStatus');
-    if(status) { status.style.display='block'; status.textContent='📦 جاري تحميل مكتبة النشر (مرة واحدة فقط)...'; }
-  });
-  // نشر تلقائي بـ Puppeteer
+  // نشر تلقائي عبر نافذة إكس الداخلية
   document.getElementById('btnPuppeteer')?.addEventListener('click', async ()=>{
     const btn = document.getElementById('btnPuppeteer');
     const status = document.getElementById('puppeteerStatus');
-    btn.disabled=true; btn.textContent='⏳ جاري فتح Chrome...';
-    status.style.display='block'; status.textContent='🔄 جاري التحقق من Chrome...';
+    btn.disabled=true; btn.textContent='\u23f3 جاري النشر...';
+    if(status){ status.style.display='block'; status.textContent='\ud83c\udf10 فتح إكس والنشر...'; }
 
-    // تحقق من Chrome
-    const chromeCheck = await window.api.checkChrome();
-    if(!chromeCheck.found){
-      btn.disabled=false; btn.textContent='🚀 نشر تلقائي عبر Chrome';
-      status.style.display='none';
-      alert('❌ Chrome غير موجود\n\nيرجى تثبيت Google Chrome أولاً من:\nhttps://www.google.com/chrome');
-      return;
-    }
-
-    status.textContent='🌐 فتح X...';
     const result = await window.api.puppeteerPost({ content: S.tweet });
 
     if(result.success){
-      S.postResult = { success: true, msg: '🎉 تم النشر بنجاح!', sub: 'تم النشر تلقائياً عبر Chrome' };
+      S.postResult = { success: true, msg: '\ud83c\udf89 تم النشر بنجاح!', sub: 'تم النشر تلقائياً على إكس' };
       render();
-    } else if(result.error === 'LOGIN_REQUIRED'){
-      btn.disabled=false; btn.textContent='🚀 نشر تلقائي عبر Chrome';
-      status.style.display='none';
-      const doLogin = confirm('⚠️ يجب تسجيل الدخول في X أولاً\n\nهل تريد فتح Chrome لتسجيل الدخول؟');
-      if(doLogin){
-        status.style.display='block'; status.textContent='🔄 انتظر حتى تسجل الدخول في Chrome...';
-        const loginResult = await window.api.puppeteerLogin();
-        status.style.display='none';
-        if(loginResult.success){
-          alert(`✅ تم تسجيل الدخول بنجاح\nاضغط "نشر تلقائي" مجدداً`);
-        } else {
-          alert('❌ فشل تسجيل الدخول: ' + loginResult.error);
-        }
-      }
+    } else if(result.error === 'LOGIN_REQUIRED' || result.error === 'LOGIN_TIMEOUT'){
+      btn.disabled=false; btn.textContent='\ud83d\ude80 نشر تلقائي على إكس';
+      if(status) status.style.display='none';
+      alert('\u26a0\ufe0f يجب تسجيل الدخول في إكس\n\nستفتح نافذة إكس — سجّل دخولك مرة واحدة ثم اضغط "نشر تلقائي" مجدداً.');
     } else {
-      btn.disabled=false; btn.textContent='🚀 نشر تلقائي عبر Chrome';
-      status.style.display='none';
-      alert('❌ فشل النشر:\n' + result.error);
+      btn.disabled=false; btn.textContent='\ud83d\ude80 نشر تلقائي على إكس';
+      if(status) status.style.display='none';
+      alert('\u274c تعذّر النشر:\n' + (result.error || 'خطأ غير معروف') + '\n\nيمكنك نسخ التغريدة ونشرها يدوياً.');
     }
   });
 
@@ -1116,7 +1090,7 @@ function bindS2(){
   document.getElementById('btnWA')?.addEventListener('click', ()=> openWhatsApp(S.tweet));
   document.getElementById('btnSave')?.addEventListener('click', ()=>{
     saveTweet(S.tweet);
-    alert('✅ تم الحفظ في المحفوظات');
+    alert('\u2705 تم الحفظ في المحفوظات');
     render();
   });
 }
@@ -1242,7 +1216,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.5'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.6'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
