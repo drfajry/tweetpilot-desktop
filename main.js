@@ -23,12 +23,12 @@ const Database = require('./db');
 const cron = require('node-cron');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
+const API_KEY      = ''; // ← Consumer Key
+const API_SECRET   = ''; // ← Consumer Secret
+const ACCESS_TOKEN = ''; // ← Access Token
+const ACCESS_SECRET= ''; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.3.5';
+const APP_VERSION    = '1.3.6';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -315,127 +315,6 @@ function fetchYoutubeTrends(region) {
   });
 }
 
-// ── النشر بـ Puppeteer ────────────────────────────
-function getChromePath() {
-  const paths = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser',
-  ];
-  for (const p of paths) {
-    try { if (p && require('fs').existsSync(p)) return p; } catch(e){}
-  }
-  return null;
-}
-
-// فتح Chrome مع remote debugging
-function launchChromeDebug() {
-  const { spawn } = require('child_process');
-  const chromePath = getChromePath();
-  if (!chromePath) return false;
-  const userDataDir = path.join(app.getPath('userData'), 'chrome-nashir');
-  spawn(chromePath, [
-    '--remote-debugging-port=9222',
-    `--user-data-dir=${userDataDir}`,
-    '--no-first-run',
-    '--no-default-browser-check',
-    'https://x.com/home',
-  ], { detached: true, stdio: 'ignore' });
-  return true;
-}
-
-// CDP عبر WebSocket — بدون puppeteer
-async function cdpPost(content) {
-  let target;
-  try {
-    const res = await fetch('http://localhost:9222/json');
-    const list = await res.json();
-    // ابحث عن تبويب X
-    target = list.find(t => t.type === 'page' && /x\.com|twitter\.com/.test(t.url));
-    if (!target) {
-      // افتح تبويب X جديد
-      await fetch('http://localhost:9222/json/new?https://x.com/home');
-      await new Promise(r => setTimeout(r, 3000));
-      const res2 = await fetch('http://localhost:9222/json');
-      const list2 = await res2.json();
-      target = list2.find(t => t.type === 'page' && /x\.com|twitter\.com/.test(t.url));
-    }
-  } catch(e) {
-    return { success: false, error: 'NO_CHROME' };
-  }
-  if (!target || !target.webSocketDebuggerUrl) {
-    return { success: false, error: 'NO_TARGET' };
-  }
-
-  // اتصل عبر WebSocket بـ CDP
-  return new Promise((resolve) => {
-    let ws;
-    try {
-      const NodeWS = require('ws');
-      ws = new NodeWS(target.webSocketDebuggerUrl);
-    } catch(e) {
-      return resolve({ success: false, error: 'NO_WS' });
-    }
-
-    let msgId = 0;
-    const send = (method, params) => {
-      msgId++;
-      ws.send(JSON.stringify({ id: msgId, method, params: params || {} }));
-      return msgId;
-    };
-
-    let timedOut = setTimeout(() => { try{ws.close();}catch(e){} resolve({ success:false, error:'انتهت المهلة' }); }, 30000);
-
-    ws.on('open', async () => {
-      send('Runtime.enable');
-      send('Page.enable');
-      // انتقل لصفحة الكتابة وانشر عبر JS
-      const js = `
-        (async () => {
-          function wait(ms){return new Promise(r=>setTimeout(r,ms));}
-          // افتح نافذة الكتابة
-          const composeBtn = document.querySelector('a[data-testid="SideNav_NewTweet_Button"], a[href="/compose/post"]');
-          if(composeBtn) composeBtn.click();
-          await wait(2000);
-          const box = document.querySelector('[data-testid="tweetTextarea_0"], div[role="textbox"]');
-          if(!box) return 'NO_BOX';
-          box.focus();
-          document.execCommand('insertText', false, ${JSON.stringify(content)});
-          await wait(1500);
-          const postBtn = document.querySelector('[data-testid="tweetButton"], [data-testid="tweetButtonInline"]');
-          if(!postBtn) return 'NO_BTN';
-          if(postBtn.getAttribute('aria-disabled')==='true') return 'DISABLED';
-          postBtn.click();
-          await wait(3000);
-          return 'OK';
-        })()
-      `;
-      const id = send('Runtime.evaluate', { expression: js, awaitPromise: true, returnByValue: true });
-
-      ws.on('message', (data) => {
-        try {
-          const msg = JSON.parse(data.toString());
-          if (msg.id === id) {
-            clearTimeout(timedOut);
-            const result = msg.result?.result?.value;
-            try { ws.close(); } catch(e){}
-            if (result === 'OK') resolve({ success: true });
-            else if (result === 'NO_BOX') resolve({ success: false, error: 'تعذر العثور على صندوق الكتابة' });
-            else if (result === 'NO_BTN') resolve({ success: false, error: 'تعذر العثور على زر النشر' });
-            else if (result === 'DISABLED') resolve({ success: false, error: 'زر النشر معطّل (تحقق من المحتوى)' });
-            else resolve({ success: false, error: 'فشل غير معروف: ' + result });
-          }
-        } catch(e) {}
-      });
-    });
-
-    ws.on('error', (e) => { clearTimeout(timedOut); resolve({ success: false, error: 'WS: ' + e.message }); });
-  });
-}
-
 // ── النشر عبر نافذة Electron داخلية ───────────────
 // نافذة X مدمجة — المستخدم يسجل دخوله مرة، الجلسة محفوظة
 let xWindow = null;
@@ -565,7 +444,7 @@ async function openChromeForLogin() {
 }
 
 
-// ── النشر بـ Puppeteer ────────────────────────────
+
 // ── توليد التغريدة ───────────────────────────────
 ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, fixedTags, category }) => {
   // فك ترميز الرابط إذا كان مشفّراً
@@ -767,8 +646,8 @@ ipcMain.handle('puppeteer-login', async () => {
 });
 
 ipcMain.handle('check-chrome', () => {
-  const path = getChromePath();
-  return { found: !!path, path };
+  // لم نعد نحتاج Chrome — النشر عبر نافذة داخلية
+  return { found: true };
 });
 
 ipcMain.handle('post-tweet', async (_, { content }) => {
