@@ -109,7 +109,7 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 const S={
   user:null, step:0, page:'compose',
   region:'sa', platform:'x', trends:[], selTrends:[], trendsReal:false, trendsError:'',
-  fixedTags:true,
+  customTags:'',
   bsSrc:'amazon', products:[], prodSearch:'',
   afUrl:'', prodDesc:'', prodImages:[], tone:'hype', category:'',
   tweet:'', saved:[],
@@ -303,21 +303,31 @@ function renderSeoPage(){
 
   ${r ? `
   <div class="card">
-    <div class="ct" style="color:#00c896">✅ الناتج — اضغط على أي قسم لنسخه</div>
+    <div class="ct" style="color:#00c896">✅ الناتج</div>
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🏷️ العنوان المحسّن</div>
-      <div onclick="copySection('seoResTitle')" id="seoResTitle" class="seo-res-box">${escHtml(r.title)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:#1d9bf0;font-weight:600">🏷️ العنوان</span>
+        <button class="btn btn-g" onclick="copySection('seoResTitle')" style="width:auto;padding:4px 14px;font-size:11px">📋 نسخ العنوان</button>
+      </div>
+      <div id="seoResTitle" class="seo-res-box">${escHtml(r.title)}</div>
     </div>
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">📝 الوصف الكامل</div>
-      <div onclick="copySection('seoResDesc')" id="seoResDesc" class="seo-res-box" style="white-space:pre-wrap;line-height:1.9;max-height:320px;overflow-y:auto">${escHtml(r.description)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:#1d9bf0;font-weight:600">📝 الوصف</span>
+        <button class="btn btn-g" onclick="copySection('seoResDesc')" style="width:auto;padding:4px 14px;font-size:11px">📋 نسخ الوصف</button>
+      </div>
+      <div id="seoResDesc" class="seo-res-box" style="white-space:pre-wrap;line-height:1.9;max-height:320px;overflow-y:auto">${escHtml(r.description)}</div>
     </div>
     <div style="margin-bottom:16px">
-      <div style="font-size:12px;color:#1d9bf0;font-weight:600;margin-bottom:6px">🔖 الوسوم</div>
-      <div onclick="copySection('seoResTags')" id="seoResTags" class="seo-res-box">${escHtml(r.tags)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:#1d9bf0;font-weight:600">🔖 الكلمات الدلالية (Tags)</span>
+        <button class="btn btn-g" onclick="copySection('seoResTags')" style="width:auto;padding:4px 14px;font-size:11px">📋 نسخ الكلمات</button>
+      </div>
+      <div id="seoResTags" class="seo-res-box">${escHtml(r.tags)}</div>
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">💡 في يوتيوب تُسمى "العلامات" أو Tags — تُضاف في إعدادات الفيديو المتقدمة</div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ الكل</button>
+      <button class="btn btn-p" onclick="copyAllSeo()" style="font-size:13px;padding:11px">📋 نسخ الكل معاً</button>
       <button class="btn btn-g" onclick="SEO_STATE.result=null;render()" style="width:auto;padding:11px 18px;font-size:13px">🔄 إعادة</button>
     </div>
   </div>` : ''}`;
@@ -865,16 +875,10 @@ function renderS0(){
   ${S.trends.length?`<div class="tg">${cards}</div>`:''}
   ${!S.trends.length&&!S.trendsError?'<div style="color:#6b7280;font-size:13px;text-align:center;padding:20px">اضغط "جلب الترندات" للبدء</div>':''}
   ${S.selTrends.length?`<div class="card"><div class="ct">✅ الترندات المختارة</div><div>${tags}</div></div>`:''}
-  <div class="card" style="padding:14px 20px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:#e0e0e0">هاشتاقات ثابتة</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:3px">#فيصل_يختار #تخفيضات — تُضاف تلقائياً</div>
-      </div>
-      <div class="tog" style="background:${S.fixedTags?'#1d9bf0':'#1a2540'}" onclick="S.fixedTags=!S.fixedTags;render()">
-        <div class="tog-dot" style="${S.fixedTags?'right:2px':'left:2px'}"></div>
-      </div>
-    </div>
+  <div class="card">
+    <div class="ct">🏷️ هاشتاقات إضافية (اختياري)</div>
+    <input id="customTags" placeholder="مثال: #عروض #الرياض — اتركه فارغاً للاعتماد على الترندات" value="${S.customTags||''}" style="width:100%" oninput="S.customTags=this.value">
+    <div style="font-size:11px;color:#6b7280;margin-top:6px">تُضاف هذه الهاشتاقات لكل تغريدة. اتركها فارغة لتعتمد على الترندات المختارة فقط.</div>
   </div>
   <div style="display:flex;gap:10px;margin-top:8px">
     <button class="btn btn-p" id="btnN0">التالي ← بناء التغريدة</button>
@@ -1159,7 +1163,7 @@ async function genTweet(){
   S.afUrl=af; S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
   const btn=document.getElementById('btnGen'), ld=document.getElementById('genLd');
   btn.disabled=true; if(ld) ld.style.display='block';
-  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone, fixedTags:S.fixedTags, category:S.category});
+  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone, customTags:S.customTags, category:S.category});
   if(r.success) S.tweet=r.tweet;
   btn.disabled=false; if(ld) ld.style.display='none';
   render();
@@ -1206,7 +1210,12 @@ async function logout(){
 }
 
 function goStep(n){ S.step=n; render(); }
-function goPage(p){ S.page=p; render(); }
+function goPage(p){
+  S.page=p;
+  // عند العودة لصفحة الإنشاء، صفّر حالة المعالج لتبدأ من جديد
+  if(p==='compose'){ S.step=0; S.postResult=null; S.copySuccess=false; }
+  render();
+}
 function saveS1Inputs(){
   const af = document.getElementById('afUrl')?.value;
   const pd = document.getElementById('prodDesc')?.value;
@@ -1216,7 +1225,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.6'; // يُحدّث تلقائياً من main
+let APP_VER = '1.3.7'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
 
 function renderAboutPage(){
@@ -1234,15 +1243,26 @@ function renderAboutPage(){
         <span style="color:#6b7280">التطوير</span>
         <span style="color:#e8eaf0;font-weight:600">د. فيصل الفجري</span>
       </div>
-      <div style="display:flex;justify-content:space-between;padding:10px 0">
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a2540">
         <span style="color:#6b7280">الدعم الفني</span>
         <span style="color:#25D366;font-weight:600;cursor:pointer" onclick="openWhatsApp(SUPPORT_MSG_HELP)">0559099222</span>
       </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;align-items:center">
+        <span style="color:#6b7280">كود خصم نون</span>
+        <span onclick="copyNoonCode()" id="noonCodeBox" style="color:#f59e0b;font-weight:800;cursor:pointer;background:#f59e0b15;border:1px dashed #f59e0b55;border-radius:8px;padding:4px 14px;letter-spacing:1px" title="اضغط للنسخ">FAI16 📋</span>
+      </div>
     </div>
+    <div style="font-size:11px;color:#6b7280;margin-top:10px;text-align:center">💡 استخدم كود <strong style="color:#f59e0b">FAI16</strong> للحصول على خصم عند الشراء من نون</div>
 
     <div style="font-size:11px;color:#3a4456;margin-top:20px">© ${new Date().getFullYear()} ناشر — جميع الحقوق محفوظة</div>
   </div>`;
 }
+
+window.copyNoonCode = async () => {
+  await window.api.copyToClipboard('FAI16');
+  const box = document.getElementById('noonCodeBox');
+  if(box){ const orig = box.innerHTML; box.innerHTML = '✅ تم النسخ'; setTimeout(()=>{ box.innerHTML = orig; }, 1500); }
+};
 
 function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; S.postResult=null; render(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
