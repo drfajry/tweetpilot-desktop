@@ -900,8 +900,8 @@ function renderHdr(){
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
       <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">📋 المخطط ${DUE_COUNT>0?`<span style="background:#f59e0b;color:#0a0f1a;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700">${DUE_COUNT}</span>`:''}</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 يوتيوب</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 يوتيوب</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
       <button class="btn btn-g btn-sm" onclick="goPage('about')" style="${S.page==='about'?'color:#1d9bf0;border-color:#1d9bf0':''}">ℹ️ حول</button>
       <div class="ubadge"><span class="uname">🔑 ${S.user.username}</span></div>
@@ -1302,7 +1302,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.4.2'; // يُحدّث تلقائياً من main
+let APP_VER = '1.5.1'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1355,6 +1355,9 @@ function renderAboutPage(){
     </div>
     <div style="font-size:11px;color:#6b7280;margin-top:10px;text-align:center">💡 استخدم كود <strong style="color:#f59e0b">FAI16</strong> للحصول على خصم عند الشراء من نون</div>
 
+    <button class="btn btn-g" id="btnManualUpdate" onclick="manualUpdateCheck()" style="margin-top:16px;font-size:13px">🔄 تحقق من التحديث الآن</button>
+    <div id="updateCheckStatus" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+
     ${SPONSOR.enabled ? `
     <div class="card" style="margin-top:16px;border-color:#f59e0b33;cursor:pointer" onclick="window.api.openExternal(SPONSOR.url)">
       <div style="font-size:10px;color:#f59e0b;font-weight:700;margin-bottom:8px">⭐ برعاية</div>
@@ -1370,6 +1373,20 @@ function renderAboutPage(){
     <div style="font-size:11px;color:#3a4456;margin-top:20px">© ${new Date().getFullYear()} ناشر — جميع الحقوق محفوظة</div>
   </div>`;
 }
+
+window.manualUpdateCheck = async () => {
+  const el = document.getElementById('updateCheckStatus');
+  const btn = document.getElementById('btnManualUpdate');
+  if(btn) btn.disabled = true;
+  if(el) el.textContent = '⏳ جاري التحقق من GitHub...';
+  let answered = false;
+  const done = (msg, color) => { answered = true; if(el){ el.textContent = msg; el.style.color = color||'#6b7280'; } if(btn) btn.disabled = false; };
+  window.api.onUpdateAvailable(d => { if(!answered) done(`🆕 يوجد إصدار جديد v${d.latest} — سيظهر شريط التحديث بالأعلى`, '#00c896'); });
+  window.api.onUpdateNotAvail(() => { if(!answered) done(`✅ أنت على أحدث نسخة (v${APP_VER})`, '#00c896'); });
+  window.api.onUpdateError(d => { if(!answered) done('⚠️ تعذر التحقق: ' + (d.error||''), '#f59e0b'); });
+  try { await window.api.checkUpdate(); } catch(e) {}
+  setTimeout(()=>{ if(!answered) done('⚠️ لم يصل رد — تحقق من الإنترنت أو أن آخر إصدار منشور في GitHub Releases', '#f59e0b'); }, 15000);
+};
 
 window.copyNoonCode = async () => {
   await window.api.copyToClipboard('FAI16');
