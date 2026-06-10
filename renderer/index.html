@@ -21,7 +21,13 @@ body{background:#070b14;color:#e8eaf0;font-family:'Segoe UI',Tahoma,sans-serif;h
 .hdr-r{display:flex;align-items:center;gap:8px}
 .ubadge{display:flex;align-items:center;gap:7px;padding:5px 12px;background:#111827;border:1px solid #1d9bf033;border-radius:20px}
 .uname{font-size:12px;color:#aaa}
-.main{flex:1;overflow-y:auto;padding:24px 20px 40px;max-width:860px;margin:0 auto;width:100%}
+.main{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px 20px 40px;max-width:860px;margin:0 auto;width:100%;scrollbar-width:thin;scrollbar-color:transparent transparent}
+.main:hover{scrollbar-color:#1a2540 transparent}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-track{background:transparent}
+.main::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;transition:background .3s}
+.main:hover::-webkit-scrollbar-thumb{background:#1a2540}
+.main::-webkit-scrollbar-thumb:hover{background:#2a3550}
 .cs{display:flex;flex-direction:column;align-items:center;justify-content:center;height:65vh;text-align:center;gap:16px}
 .cs-ic{font-size:72px}
 .cs-t{font-size:26px;font-weight:700;color:#fff}
@@ -458,7 +464,7 @@ async function copyAllSeo(){
 
 
 
-// ── صفحة الجدولة الذكية ──────────────────────────
+// ── صفحة مخطط المحتوى ────────────────────────────
 const SCHED_STATE = {
   tweets: [],        // التغريدات المضافة
   dailyCount: 3,     // عدد التغريدات يومياً
@@ -478,8 +484,9 @@ const BEST_TIMES = {
 
 function renderSchedulePage(){
   const times = BEST_TIMES[SCHED_STATE.dailyCount] || BEST_TIMES[3];
-  return `<div class="ptit">🕐 الجدولة الذكية</div>
-  <div class="psub">أضف تغريداتك وحدد عدد النشر يومياً — سنختار أفضل الأوقات تلقائياً</div>
+  return `<div class="ptit">📋 مخطط المحتوى</div>
+  <div class="psub">جهّز تغريداتك ووزّعها على الأيام بأفضل الأوقات — وعند فتح التطبيق تنشر منشورات اليوم بضغطة زر</div>
+  ${renderDueSection()}
 
   <!-- إضافة تغريدات -->
   <div class="card">
@@ -537,11 +544,11 @@ function renderSchedulePage(){
 
   ${SCHED_STATE.tweets.length > 0 ? `
   <div style="background:#1d9bf011;border:1px solid #1d9bf033;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#7ab8f5">
-    📊 سيتم جدولة <strong>${SCHED_STATE.tweets.length}</strong> تغريدة على مدى <strong>${Math.ceil(SCHED_STATE.tweets.length/SCHED_STATE.dailyCount)}</strong> أيام
+    📊 سيتم توزيع <strong>${SCHED_STATE.tweets.length}</strong> تغريدة على مدى <strong>${Math.ceil(SCHED_STATE.tweets.length/SCHED_STATE.dailyCount)}</strong> أيام
     بمعدل <strong>${SCHED_STATE.dailyCount}</strong> تغريدة يومياً
   </div>
   <button class="btn btn-p" id="btnSmartSchedule" style="font-size:15px;padding:14px;margin-bottom:16px" ${SCHED_STATE.loading?'disabled':''}>
-    ${SCHED_STATE.loading ? '<span class="spin"></span> جاري الجدولة...' : '🚀 جدولة ذكية'}
+    ${SCHED_STATE.loading ? '<span class="spin"></span> جاري التوزيع...' : '📋 توزيع على المخطط'}
   </button>` : ''}
 
   <!-- التغريدات المجدولة -->
@@ -560,7 +567,7 @@ function renderSchedulePage(){
         <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${escHtml(t.content.substring(0,70))}${t.content.length>70?'...':''}</td>
         <td style="white-space:nowrap;color:#aaa;font-size:11px">${new Date(t.scheduled_at).toLocaleString('ar-SA',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
         <td><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:${t.status==='pending'?'#1d9bf022':t.status==='posted'?'#00c89622':'#ff444422'};color:${t.status==='pending'?'#1d9bf0':t.status==='posted'?'#00c896':'#ff6b6b'}">${t.status==='pending'?'⏳ انتظار':t.status==='posted'?'✅ نُشرت':'❌ فشلت'}</span></td>
-        <td>${t.status==='pending'?`<button onclick="deleteSched(${t.id})" style="background:transparent;border:none;color:#ff6b6b;cursor:pointer;font-size:16px">✕</button>`:''}</td>
+        <td style="white-space:nowrap">${t.status==='pending'?`<button onclick="postNow(${t.id})" ${POSTING_ID?'disabled':''} style="background:#00c89622;border:1px solid #00c89633;color:#00c896;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer">${POSTING_ID===t.id?'⏳':'🚀 نشر'}</button> <button onclick="deleteSched(${t.id})" style="background:transparent;border:none;color:#ff6b6b;cursor:pointer;font-size:16px">✕</button>`:''}</td>
       </tr>`).join('')}
     </table>
   </div>` : ''}`;
@@ -628,6 +635,65 @@ function bindSchedulePage(){
 
 async function loadScheduledList(){
   SCHED_STATE.scheduled = await window.api.getScheduled();
+  updateDueCount();
+}
+
+// ── مخطط المحتوى: منشورات اليوم ──────────────────
+let DUE_COUNT = 0;
+let POSTING_ID = null;
+
+function getDueItems(){
+  const endOfToday = new Date(); endOfToday.setHours(23,59,59,999);
+  return SCHED_STATE.scheduled.filter(t => t.status==='pending' && new Date(t.scheduled_at) <= endOfToday);
+}
+
+function updateDueCount(){
+  DUE_COUNT = getDueItems().length;
+}
+
+async function refreshDueCount(){
+  try {
+    SCHED_STATE.scheduled = await window.api.getScheduled();
+    updateDueCount();
+    renderHdr();
+  } catch(e){}
+}
+
+function renderDueSection(){
+  const due = getDueItems();
+  if(due.length === 0) return '';
+  const now = new Date();
+  return `<div class="card" style="border-color:#f59e0b55;background:linear-gradient(135deg,#f59e0b08,#111827)">
+    <div class="ct" style="color:#f59e0b">📌 منشورات اليوم (${due.length}) — جاهزة للنشر</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${due.map(t=>{
+        const d = new Date(t.scheduled_at);
+        const overdue = d < now;
+        return `<div style="background:#0a0f1a;border:1px solid ${overdue?'#f59e0b33':'#1a2540'};border-radius:9px;padding:10px 12px;display:flex;gap:10px;align-items:center">
+          <div style="flex:1;font-size:12px;color:#ccd;line-height:1.6">${escHtml(t.content.substring(0,100))}${t.content.length>100?'...':''}</div>
+          <span style="font-size:11px;color:${overdue?'#f59e0b':'#6b7280'};white-space:nowrap">${overdue?'⏰ حان وقته':''} ${d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</span>
+          <button onclick="postNow(${t.id})" ${POSTING_ID?'disabled':''} style="background:linear-gradient(135deg,#00c896,#00a578);border:none;color:#fff;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">${POSTING_ID===t.id?'<span class="spin"></span> جاري النشر...':'🚀 نشر الآن'}</button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+async function postNow(id){
+  if(POSTING_ID) return;
+  const item = SCHED_STATE.scheduled.find(t=>t.id===id);
+  if(!item) return;
+  POSTING_ID = id;
+  render();
+  const r = await window.api.postScheduled({ id, content: item.content });
+  POSTING_ID = null;
+  if(r.success){
+    await loadScheduledList();
+    render();
+  } else {
+    alert('فشل النشر: ' + (r.error||'') + '\nالمنشور لا يزال في المخطط — حاول مرة أخرى.');
+    render();
+  }
 }
 
 async function deleteSched(id){
@@ -819,7 +885,7 @@ function renderHdr(){
     } else { st.innerHTML=''; }
     hr.innerHTML=`
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">🕐 جدولة</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">📋 المخطط ${DUE_COUNT>0?`<span style="background:#f59e0b;color:#0a0f1a;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700">${DUE_COUNT}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 يوتيوب</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
@@ -1225,8 +1291,9 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.3.8'; // يُحدّث تلقائياً من main
+let APP_VER = '1.5.0'; // يُحدّث تلقائياً من main
 window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
+setTimeout(refreshDueCount, 1500); // شارة منشورات اليوم عند الفتح
 
 function renderAboutPage(){
   return `<div style="max-width:440px;margin:0 auto;text-align:center;padding-top:30px">
