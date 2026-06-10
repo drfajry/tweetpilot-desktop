@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('api', {
   getScheduled:     ()       => ipcRenderer.invoke('get-scheduled'),
   deleteScheduled:  (id)     => ipcRenderer.invoke('delete-scheduled', id),
   deleteAllScheduled: ()     => ipcRenderer.invoke('delete-all-scheduled'),
+  postScheduled:    (data)   => ipcRenderer.invoke('post-scheduled', data),
   getHistory:       ()       => ipcRenderer.invoke('get-history'),
   fetchBestsellers: (data)   => ipcRenderer.invoke('fetch-bestsellers', data),
   fetchProductImage:(url)    => ipcRenderer.invoke('fetch-product-image', url),
