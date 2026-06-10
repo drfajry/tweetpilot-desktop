@@ -1,6 +1,6 @@
 {
   "name": "nashir",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "ناشر - نشرك أذكى على مواقع التواصل الاجتماعي",
   "author": "Nashir",
   "main": "main.js",
@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "twitter-api-v2": "^1.17.0",
-    "node-cron": "^3.0.3",
     "electron-updater": "^6.1.7"
   },
   "devDependencies": {
@@ -40,7 +39,9 @@
     },
     "nsis": {
       "oneClick": true,
-      "installerLanguages": ["en_US"],
+      "installerLanguages": [
+        "en_US"
+      ],
       "shortcutName": "ناشر"
     }
   }
