@@ -98,6 +98,7 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 /* toggle switch */
 .tog{width:40px;height:22px;border-radius:11px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
 .tog-dot{width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left .2s,right .2s}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-15px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 </style>
 </head>
 <body>
@@ -481,7 +482,6 @@ async function copyAllSeo(){
 const SCHED_STATE = {
   tweets: [],        // التغريدات المضافة
   dailyCount: 3,     // عدد التغريدات يومياً
-  startToday: true,  // ابدأ اليوم أم غداً
   scheduled: [],     // التغريدات المجدولة
   loading: false,
   newTweet: '',
@@ -499,6 +499,8 @@ function renderSchedulePage(){
   const times = BEST_TIMES[SCHED_STATE.dailyCount] || BEST_TIMES[3];
   return `<div class="ptit">📋 مخطط المحتوى</div>
   <div class="psub">جهّز تغريداتك ووزّعها على الأيام بأفضل الأوقات — وعند فتح التطبيق تنشر منشورات اليوم بضغطة زر</div>
+  <div style="background:#00c89611;border:1px solid #00c89633;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#00c896">✨ ذكي: عند النشر تُستبدل الهاشتاقات القديمة تلقائياً بترندات إكس لحظة النشر</div>
+  <div style="background:#f59e0b11;border:1px solid #f59e0b44;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#f59e0b">⚠️ <strong>مهم:</strong> راجع الهاشتاقات في نافذة إكس <strong>قبل الضغط على "نشر"</strong> — بعض الترندات قد تكون سياسية أو حساسة ولا تناسب محتواك التسويقي. احذف أي هاشتاق غير مناسب ثم انشر</div>
   ${renderDueSection()}
 
   <!-- إضافة تغريدات -->
@@ -539,18 +541,6 @@ function renderSchedulePage(){
       <label>أوقات النشر المثلى (بتوقيت السعودية)</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
         ${times.map(t=>`<span style="padding:5px 12px;border-radius:16px;font-size:12px;background:#1d9bf011;border:1px solid #1d9bf033;color:#7ab8f5">🕐 ${t}</span>`).join('')}
-      </div>
-    </div>
-  </div>
-
-  <div class="card" style="padding:14px 20px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:#e0e0e0">ابدأ من اليوم</div>
-        <div style="font-size:11px;color:#6b7280;margin-top:2px">${SCHED_STATE.startToday ? 'يبدأ النشر اليوم' : 'يبدأ النشر من الغد'}</div>
-      </div>
-      <div class="tog" style="background:${SCHED_STATE.startToday?'#1d9bf0':'#1a2540'}" onclick="SCHED_STATE.startToday=!SCHED_STATE.startToday;render()">
-        <div class="tog-dot" style="${SCHED_STATE.startToday?'right:2px':'left:2px'}"></div>
       </div>
     </div>
   </div>
@@ -616,8 +606,7 @@ function bindSchedulePage(){
     if(SCHED_STATE.tweets.length === 0){ alert('أضف تغريدات أولاً'); return; }
     SCHED_STATE.loading = true;
     render();
-    const startDate = new Date();
-    if(!SCHED_STATE.startToday) startDate.setDate(startDate.getDate() + 1);
+    const startDate = new Date(); // التوزيع يبدأ من اليوم دائماً (الأوقات الماضية يتخطاها التوزيع تلقائياً)
     startDate.setHours(0,0,0,0);
     const r = await window.api.smartSchedule({
       tweets: SCHED_STATE.tweets,
@@ -664,12 +653,34 @@ function updateDueCount(){
   DUE_COUNT = getDueItems().length;
 }
 
+let DUE_REMINDER_SHOWN = false;
+
 async function refreshDueCount(){
   try {
     SCHED_STATE.scheduled = await window.api.getScheduled();
     updateDueCount();
     renderHdr();
+    showDueReminder();
   } catch(e){}
+}
+
+// تذكير بارز عند فتح التطبيق إذا كان هناك منشورات لليوم — مرة واحدة بالجلسة
+function showDueReminder(){
+  if(DUE_REMINDER_SHOWN || DUE_COUNT === 0 || S.page === 'schedule') return;
+  DUE_REMINDER_SHOWN = true;
+  const el = document.createElement('div');
+  el.id = 'dueReminder';
+  el.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:998;background:linear-gradient(135deg,#1a2540,#111827);border:1px solid #f59e0b66;border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:90%;animation:slideDown .35s ease';
+  el.innerHTML = `
+    <span style="font-size:24px">📌</span>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#fff">لديك ${DUE_COUNT} ${DUE_COUNT===1?'منشور مجدول':'منشورات مجدولة'} لليوم</div>
+      <div style="font-size:11px;color:#9aa">جاهزة للنشر بضغطة زر من مخطط المحتوى</div>
+    </div>
+    <button onclick="goPage('schedule');document.getElementById('dueReminder')?.remove()" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#fff;border-radius:9px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">فتح المخطط</button>
+    <button onclick="document.getElementById('dueReminder')?.remove()" style="background:transparent;border:none;color:#6b7280;cursor:pointer;font-size:16px;padding:4px">✕</button>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{ document.getElementById('dueReminder')?.remove(); }, 20000);
 }
 
 function renderDueSection(){
@@ -678,6 +689,7 @@ function renderDueSection(){
   const now = new Date();
   return `<div class="card" style="border-color:#f59e0b55;background:linear-gradient(135deg,#f59e0b08,#111827)">
     <div class="ct" style="color:#f59e0b">📌 منشورات اليوم (${due.length}) — جاهزة للنشر</div>
+    <div style="font-size:11px;color:#f59e0b;opacity:.85;margin:-6px 0 10px">⚠️ تذكير: تأكد من الهاشتاقات المضافة تلقائياً في نافذة إكس قبل الضغط على "نشر" — قد تتضمن ترندات حساسة</div>
     <div style="display:flex;flex-direction:column;gap:8px">
       ${due.map(t=>{
         const d = new Date(t.scheduled_at);
@@ -1009,8 +1021,8 @@ function renderS1(){
       </div>
     </div>` : ''}
     <div style="margin-top:10px">
-      <label>${S.prodImages.length === 0 ? 'أو ارفع صورة من جهازك (حتى 4 صور)' : 'إضافة صورة أخرى'}</label>
-      <input type="file" id="imgUpload" accept="image/*" ${S.prodImages.length >= 4 ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px">
+      <label>${S.prodImages.length === 0 ? 'أو ارفع صوراً من جهازك — يمكنك تحديد عدة صور معاً (حتى 4)' : 'إضافة صور أخرى (تحديد متعدد)'}</label>
+      <input type="file" id="imgUpload" accept="image/*" multiple ${S.prodImages.length >= 4 ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px">
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
       <button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';S.prodImages=[];render()" title="مسح الكل">🗑️ مسح الكل</button>
@@ -1302,7 +1314,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.5.1'; // يُحدّث تلقائياً من main
+let APP_VER = '1.5.4'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
