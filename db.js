@@ -103,9 +103,12 @@ class Statement {
       return {};
     }
 
-    // DELETE all pending
+    // DELETE all pending (+failed)
     if (/DELETE FROM scheduled_tweets WHERE status='pending'/i.test(sql)) {
-      this.db.data.scheduled_tweets = this.db.data.scheduled_tweets.filter(r => r.status !== 'pending');
+      const alsoFailed = /failed/i.test(sql);
+      this.db.data.scheduled_tweets = this.db.data.scheduled_tweets.filter(r =>
+        r.status !== 'pending' && (!alsoFailed || r.status !== 'failed')
+      );
       this.db._save();
       return {};
     }
