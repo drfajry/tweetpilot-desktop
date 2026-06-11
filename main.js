@@ -22,12 +22,12 @@ const { TwitterApi } = require('twitter-api-v2');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
+const API_KEY      = ''; // ← Consumer Key
+const API_SECRET   = ''; // ← Consumer Secret
+const ACCESS_TOKEN = ''; // ← Access Token
+const ACCESS_SECRET= ''; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.6.5';
+const APP_VERSION    = '1.6.6';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -436,61 +436,11 @@ async function openComposeWindow(content, images = []) {
             }
             if (!box) return 'NO_BOX';
 
-            // العنصر القابل للتحرير الفعلي (قد يكون داخل الغلاف)
-            const ed = box.getAttribute('contenteditable') === 'true'
-              ? box : (box.querySelector('[contenteditable="true"]') || box);
-
-            // تركيز حقيقي بنقرة (يهيئ حالة المحرر الداخلية)
-            ed.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            ed.dispatchEvent(new MouseEvent('mouseup',   { bubbles: true }));
-            ed.dispatchEvent(new MouseEvent('click',     { bubbles: true }));
-            ed.focus();
-            await wait(250);
-
-            const TXT = ${JSON.stringify(content)};
-
-            // تفريغ آمن إن كان فيه نص سابق (يمنع التكدس)
-            if ((ed.textContent || '').trim().length > 0) {
-              document.execCommand('selectAll', false, null);
-              document.execCommand('delete', false, null);
-              await wait(150);
-            }
-
-            // الطريقة 1: حدث لصق حقيقي — محرر إكس يعالجه كأنه لصق من المستخدم
-            // (يفعّل الهاشتاقات والروابط والعداد وزر النشر)
-            try {
-              const dt = new DataTransfer();
-              dt.setData('text/plain', TXT);
-              ed.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-            } catch(e) {}
-            await wait(700);
-
-            // تحقق: هل دخل النص؟ وإلا فالطريقة 2: إدخال سطراً بسطر
-            const firstWords = TXT.replace(/\s+/g,' ').trim().substring(0, 12);
-            if (!(ed.textContent || '').replace(/\s+/g,' ').includes(firstWords)) {
-              ed.focus();
-              const lines = TXT.split('\n');
-              for (let i = 0; i < lines.length; i++) {
-                if (i > 0) {
-                  if (!document.execCommand('insertLineBreak', false, null)) {
-                    document.execCommand('insertText', false, '\n');
-                  }
-                  await wait(60);
-                }
-                if (lines[i]) {
-                  document.execCommand('insertText', false, lines[i]);
-                  await wait(60);
-                }
-              }
-            }
-            await wait(500);
-
-            // هزّة تفعيل: مسافة ثم حذفها — تجبر المحرر على تحديث العداد وزر النشر
-            ed.focus();
-            document.execCommand('insertText', false, ' ');
-            await wait(120);
-            document.execCommand('delete', false, null);
-            await wait(400);
+            // الطريقة المجرّبة البسيطة: تركيز ثم insertText — بلا تفريغ ولا لصق ولا أحداث إضافية
+            box.focus();
+            await wait(300);
+            document.execCommand('insertText', false, ${JSON.stringify(content)});
+            await wait(800);
 
             // أرفق الصور عبر حقل الملفات المخفي
             const IMGS = ${JSON.stringify(imgs)};
