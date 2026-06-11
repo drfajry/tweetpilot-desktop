@@ -95,6 +95,15 @@ class Statement {
       return {};
     }
 
+    // UPDATE scheduled time
+    if (/UPDATE scheduled_tweets SET scheduled_at=\? WHERE id=\?/i.test(sql)) {
+      const [scheduled_at, id] = params;
+      const row = this.db.data.scheduled_tweets.find(r => r.id === id);
+      if (row) { row.scheduled_at = scheduled_at; }
+      this.db._save();
+      return {};
+    }
+
     // DELETE scheduled by id
     if (/DELETE FROM scheduled_tweets WHERE id=/i.test(sql)) {
       const [id] = params;
