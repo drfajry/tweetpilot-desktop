@@ -22,12 +22,12 @@ const { TwitterApi } = require('twitter-api-v2');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = ''; // ← Consumer Key
-const API_SECRET   = ''; // ← Consumer Secret
-const ACCESS_TOKEN = ''; // ← Access Token
-const ACCESS_SECRET= ''; // ← Access Token Secret
+const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
+const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
+const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
+const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.6.6';
+const APP_VERSION    = '1.6.7';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -436,10 +436,23 @@ async function openComposeWindow(content, images = []) {
             }
             if (!box) return 'NO_BOX';
 
-            // الطريقة المجرّبة البسيطة: تركيز ثم insertText — بلا تفريغ ولا لصق ولا أحداث إضافية
+            // الإدخال سطراً بسطر: محرر إكس يضاعف الهاشتاقات إذا استقبل \n داخل insertText واحد
             box.focus();
             await wait(300);
-            document.execCommand('insertText', false, ${JSON.stringify(content)});
+            const LINES = ${JSON.stringify(content)}.split('\n');
+            for (let li = 0; li < LINES.length; li++) {
+              if (li > 0) {
+                // سطر جديد بأمر الفقرة (المسار الذي يفهمه المحرر) — واحتياطه
+                if (!document.execCommand('insertParagraph', false, null)) {
+                  document.execCommand('insertText', false, '\n');
+                }
+                await wait(80);
+              }
+              if (LINES[li]) {
+                document.execCommand('insertText', false, LINES[li]);
+                await wait(80);
+              }
+            }
             await wait(800);
 
             // أرفق الصور عبر حقل الملفات المخفي
