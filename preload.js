@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   installUpdate:    ()       => ipcRenderer.invoke('install-update'),
   getVersion:       ()       => ipcRenderer.invoke('get-version'),
   openExternal:     (url)    => ipcRenderer.invoke('open-external', url),
+  refocusWindow:    ()       => ipcRenderer.invoke('refocus-window'),
   copyToClipboard:  (text)   => ipcRenderer.invoke('copy-to-clipboard', text),
   onUpdateAvailable:(cb)     => ipcRenderer.on('update-available',     (_, d) => cb(d)),
   onUpdateNotAvail: (cb)     => ipcRenderer.on('update-not-available', (_, d) => cb(d)),
