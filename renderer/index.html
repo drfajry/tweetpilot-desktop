@@ -1362,7 +1362,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.6.2'; // يُحدّث تلقائياً من main
+let APP_VER = '1.6.3'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1375,7 +1375,12 @@ const SPONSOR = {
 };
 
 function renderSponsorBar(){
-  if(!SPONSOR.enabled) return '';
+  // بدون راعٍ: شريط تشويقي أنيق أعلى الصفحات — المساحة معروضة لا ميتة
+  if(!SPONSOR.enabled) return `<div onclick="openXDM()" style="cursor:pointer;background:linear-gradient(135deg,#0d1421,#111827);border:1px dashed #f59e0b3d;border-radius:11px;padding:7px 16px;margin:0 auto 14px;max-width:560px;display:flex;align-items:center;gap:10px" title="للرعاية — خاص إكس">
+    <span style="font-size:9px;background:#f59e0b1a;color:#f59e0b;border-radius:6px;padding:2px 8px;font-weight:700;flex-shrink:0">⭐ شريك النجاح</span>
+    <span style="flex:1;font-size:11px;color:#8b93a7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">هذه المساحة محجوزة لعلامة مميزة — أمام جمهورك المستهدف يومياً</span>
+    <span style="color:#f59e0b;font-size:11px;flex-shrink:0;font-weight:600">للرعاية ↗</span>
+  </div>`;
   return `<div onclick="window.api.openExternal(SPONSOR.url)" style="cursor:pointer;background:linear-gradient(135deg,#111827,#0d1421);border:1px solid #f59e0b33;border-radius:12px;padding:10px 16px;margin:0 auto 16px;max-width:560px;display:flex;align-items:center;gap:12px" title="زيارة الراعي">
     <span style="font-size:9px;background:#f59e0b22;color:#f59e0b;border-radius:6px;padding:2px 8px;font-weight:700;flex-shrink:0">برعاية</span>
     ${SPONSOR.logo ? `<img src="${SPONSOR.logo}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0">` : ''}
