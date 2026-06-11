@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('api', {
   smartSchedule:    (data)   => ipcRenderer.invoke('smart-schedule', data),
   getScheduled:     ()       => ipcRenderer.invoke('get-scheduled'),
   deleteScheduled:  (id)     => ipcRenderer.invoke('delete-scheduled', id),
+  updateScheduledTime:(data) => ipcRenderer.invoke('update-scheduled-time', data),
   deleteAllScheduled: ()     => ipcRenderer.invoke('delete-all-scheduled'),
   postScheduled:    (data)   => ipcRenderer.invoke('post-scheduled', data),
   getHistory:       ()       => ipcRenderer.invoke('get-history'),
