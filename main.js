@@ -27,7 +27,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.5.4';
+const APP_VERSION    = '1.5.6';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -703,7 +703,11 @@ ipcMain.handle('open-releases', () => {
 
 // ── معالجات مساعدة ───────────────────────────────
 ipcMain.handle('open-external', (_, url) => {
-  shell.openExternal(url);
+  // حماية: روابط http/https فقط — يمنع فتح file:// أو بروتوكولات تنفيذية
+  try {
+    const u = new URL(String(url));
+    if (u.protocol === 'https:' || u.protocol === 'http:') shell.openExternal(u.href);
+  } catch(e) {}
 });
 
 ipcMain.handle('copy-to-clipboard', (_, text) => {
