@@ -118,6 +118,7 @@ const S={
   region:'sa', platform:'x', trends:[], selTrends:[], trendsReal:false, trendsError:'',
   customTags:'',
   bsSrc:'amazon', products:[], prodSearch:'',
+  mode:'general', // free | general | marketing
   afUrl:'', prodDesc:'', prodImages:[], tone:'hype', category:'',
   tweet:'', saved:[],
   copySuccess:false, postResult:null,
@@ -994,8 +995,34 @@ function bindS0(){
 // ── الخطوة 1: بناء التغريدة ──────────────────────
 function renderS1(){
   const cc=S.tweet.length, overLimit=cc>280;
+  const M = S.mode;
   return `<div class="ptit">بناء التغريدة</div>
+
   <div class="card">
+    <div class="ct">✍️ نوع التغريدة</div>
+    <div class="tabs">
+      <button class="tab ${M==='free'?'active':''}" onclick="switchMode('free')">📝 أكتبها بنفسي</button>
+      <button class="tab ${M==='general'?'active':''}" onclick="switchMode('general')">✨ توليد تغريدة عامة</button>
+      <button class="tab ${M==='marketing'?'active':''}" onclick="switchMode('marketing')">🛒 توليد تسويقية</button>
+    </div>
+    <div style="font-size:11px;color:#6b7280">${M==='free'?'اكتب نص تغريدتك وستُضاف الترندات المختارة تلقائياً عند المتابعة':M==='general'?'تغريدات تحفيزية ومعلوماتية وفكاهية — بدون روابط منتجات':'تغريدة تسويقية كاملة برابط الأفلييت وصور المنتج'}</div>
+  </div>
+
+  ${M==='free'?`
+  <div class="card">
+    <div class="ct">📝 نص التغريدة</div>
+    <textarea id="freeTweet" placeholder="اكتب تغريدتك هنا..." style="width:100%;min-height:130px;resize:vertical" oninput="S.tweet=this.value;updCC(this.value.length)">${escHtml(S.tweet)}</textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <span style="font-size:11px;color:#6b7280">${S.selTrends.length?'سيُضاف عند المتابعة: '+S.selTrends.map(t=>escHtml(t.name)).join(' '):'لم تختر ترندات — يمكنك الرجوع لاختيارها أولاً'}</span>
+      <span class="tcc" style="font-size:12px;color:${overLimit?'#ff4444':cc>240?'#ff8800':'#00c896'}">${cc}/280</span>
+    </div>
+    <div style="margin-top:14px">
+      <button class="btn btn-p" id="btnN1" ${cc===0||overLimit?'disabled':''}>التالي ← حفظ ونسخ</button>
+    </div>
+  </div>
+  ` : ''}
+
+  ${M==='marketing'?`<div class="card">
     <div class="ct">🛍️ بحث عن منتج</div>
     <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';S.products=[];render()">${s.l}</button>`).join('')}</div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
@@ -1006,19 +1033,20 @@ function renderS1(){
       <div class="pn">${escHtml(p.name)}</div>
       <div class="pm">${p.price?'💰 '+escHtml(p.price):escHtml(p.snippet||'')}</div>
     </div>`).join('')}</div>`:''}
-  </div>
-  <div class="card">
-    <div class="ct">🔗 رابط الأفلييت ووصف المنتج</div>
-    <div class="f">
-      <label>رابط الأفلييت (اختياري — اتركه فارغاً لتغريدة عامة)</label>
+  </div>`:''}
+
+  ${M!=='free'?`<div class="card">
+    <div class="ct">${M==='marketing'?'🔗 رابط الأفلييت ووصف المنتج':'💡 موضوع التغريدة والصور'}</div>
+    ${M==='marketing'?`<div class="f">
+      <label>رابط الأفلييت</label>
       <div style="display:flex;gap:8px">
         <input id="afUrl" placeholder="https://..." value="${escHtml(S.afUrl)}" style="flex:1">
         <button class="btn btn-g" id="btnFetchImg" style="width:auto;padding:10px 14px;font-size:12px" title="سحب صورة المنتج تلقائياً">🖼️ جلب صورة</button>
       </div>
-    </div>
+    </div>`:''}
     <div class="f">
-      <label>وصف المنتج أو موضوع التغريدة (اختياري)</label>
-      <input id="prodDesc" placeholder="مثل: سماعات AirPods Pro بتخفيض 40%" value="${escHtml(S.prodDesc)}">
+      <label>${M==='marketing'?'وصف المنتج (اختياري)':'موضوع التغريدة (اختياري — اتركه فارغاً لتغريدة عامة متنوعة)'}</label>
+      <input id="prodDesc" placeholder="${M==='marketing'?'مثل: سماعات AirPods Pro بتخفيض 40%':'مثل: القراءة، الإنتاجية، القهوة...'}" value="${escHtml(S.prodDesc)}">
     </div>
     ${S.prodImages.length > 0 ? `
     <div style="margin-top:4px">
@@ -1039,8 +1067,9 @@ function renderS1(){
       <button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';S.prodImages=[];render()" title="مسح الكل">🗑️ مسح الكل</button>
       ${S.prodImages.length > 0 ? `<button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px;color:#ff6b6b" onclick="S.prodImages=[];render()">🗑️ مسح الصور فقط</button>` : ''}
     </div>
-  </div>
-  <div class="card">
+  </div>`:''}
+
+  ${M==='marketing'?`<div class="card">
     <div class="ct">🏷️ فئة المنتج (اختياري)</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${[
@@ -1052,14 +1081,15 @@ function renderS1(){
         {k:'home',l:'🏠 منزل'},
       ].map(c=>`<button class="tab ${S.category===c.k?'active':''}" onclick="setCategory('${c.k}')">${c.l}</button>`).join('')}
     </div>
-  </div>
-  <div class="card">
+  </div>`:''}
+
+  ${M!=='free'?`<div class="card">
     <div class="ct">🎭 أسلوب التغريدة</div>
     <div class="tones">${TONES.map(t=>`<button class="tone ${S.tone===t.id?'active':''}" onclick="setTone('${t.id}')">${t.l}</button>`).join('')}</div>
   </div>
-  <button class="btn btn-pu" id="btnGen" style="margin-bottom:12px">✨ توليد التغريدة</button>
+  <button class="btn btn-pu" id="btnGen" style="margin-bottom:12px">✨ توليد التغريدة</button>`:''}
   <div id="genLd" style="display:none;margin-bottom:12px"><div class="lbar"><div class="lfill"></div></div></div>
-  ${S.tweet?`
+  ${S.tweet&&M!=='free'?`
     <div class="tbox">
       <div class="tbar">
         <span class="tlbl">معاينة التغريدة</span>
@@ -1079,7 +1109,14 @@ function bindS1(){
   document.getElementById('btnBs')?.addEventListener('click', fetchBs);
   document.getElementById('prodSearch')?.addEventListener('keydown', e=>{ if(e.key==='Enter') fetchBs(); });
   document.getElementById('btnGen')?.addEventListener('click', genTweet);
-  document.getElementById('btnN1')?.addEventListener('click', ()=>{ S.step=2; render(); });
+  document.getElementById('btnN1')?.addEventListener('click', ()=>{
+    if(S.mode==='free' && S.selTrends.length){
+      const tags = S.selTrends.map(t=>t.name).join(' ');
+      if(!S.tweet.includes(tags)) {
+        const candidate = S.tweet.trimEnd() + '\n' + tags;
+        if(candidate.length <= 280) S.tweet = candidate;
+      }
+    } S.step=2; render(); });
   // جلب الصورة من الرابط
   document.getElementById('btnFetchImg')?.addEventListener('click', async()=>{
     const url = document.getElementById('afUrl')?.value?.trim();
@@ -1263,7 +1300,7 @@ async function genTweet(){
   S.afUrl=af; S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
   const btn=document.getElementById('btnGen'), ld=document.getElementById('genLd');
   btn.disabled=true; if(ld) ld.style.display='block';
-  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.afUrl, productDesc:S.prodDesc, tone:S.tone, customTags:S.customTags, category:S.category});
+  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.mode==='marketing'?S.afUrl:'', productDesc:S.prodDesc, tone:S.tone, customTags:S.customTags, category:S.mode==='marketing'?S.category:''});
   if(r.success) S.tweet=r.tweet;
   btn.disabled=false; if(ld) ld.style.display='none';
   render();
@@ -1325,7 +1362,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.6.0'; // يُحدّث تلقائياً من main
+let APP_VER = '1.6.2'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1391,7 +1428,12 @@ function renderAboutPage(){
           <div style="font-size:11px;color:#6b7280">${SPONSOR.tagline}</div>
         </div>
       </div>
-    </div>` : ''}
+    </div>` : `
+    <div class="card" style="margin-top:16px;border:1px dashed #f59e0b44;background:linear-gradient(135deg,#f59e0b08,transparent);cursor:pointer" onclick="openXDM()">
+      <div style="font-size:10px;color:#f59e0b;font-weight:700;letter-spacing:1px;margin-bottom:8px">⭐ شريك النجاح</div>
+      <div style="font-size:13px;color:#e0e0e0;font-weight:600;margin-bottom:4px">هذه المساحة محجوزة لعلامة مميزة</div>
+      <div style="font-size:11px;color:#6b7280;line-height:1.9">علامتك أمام جمهور من المغردين وصنّاع المحتوى والمسوقين — يومياً، داخل أداة عملهم. <span style="color:#1d9bf0">للرعاية: راسلنا خاص إكس ↗</span></div>
+    </div>`}
 
     <div style="font-size:11px;color:#3a4456;margin-top:20px">© ${new Date().getFullYear()} ناشر — جميع الحقوق محفوظة</div>
   </div>`;
@@ -1418,6 +1460,13 @@ window.copyNoonCode = async () => {
 };
 
 function resetW(){ S.step=0; S.selTrends=[]; S.tweet=''; S.afUrl=''; S.prodDesc=''; S.prodImages=[]; S.copySuccess=false; S.postResult=null; render(); }
+function switchMode(m){
+  if(S.mode===m) return;
+  S.mode=m; S.tweet='';
+  if(m!=='marketing'){ S.afUrl=''; S.products=[]; S.prodSearch=''; S.category=''; }
+  if(m==='free'){ S.prodImages=[]; S.prodDesc=''; }
+  render();
+}
 function toggleTrendIdx(i){ const t=S.trends[i]; if(t) toggleTrend(t.name); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/\n/g,'\\n'); }
