@@ -27,7 +27,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.6.0';
+const APP_VERSION    = '1.6.3';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -363,6 +363,8 @@ function hardenXWindow(win) {
   win.webContents.on('did-navigate-in-page', applyTitle);
   // حماية: لا تسمح بمغادرة نطاقات إكس داخل هذه النافذة
   win.webContents.on('will-navigate', (e, url) => { if (!X_DOMAINS.test(url)) e.preventDefault(); });
+  // إكس يسجّل beforeunload (تأكيد حفظ المسودة) فيعطّل زر الإغلاق بصمت — نسمح بالإغلاق دائماً
+  win.webContents.on('will-prevent-unload', (e) => e.preventDefault());
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (X_DOMAINS.test(url)) return { action: 'allow' };
     return { action: 'deny' };
@@ -434,8 +436,11 @@ async function openComposeWindow(content, images = []) {
             }
             if (!box) return 'NO_BOX';
 
-            // اكتب النص
+            // اكتب النص — بعد تفريغ الصندوق (يمنع تكدس النسخ لو أعيد الإدخال لأي سبب)
             box.focus();
+            document.execCommand('selectAll', false, null);
+            document.execCommand('delete', false, null);
+            await wait(120);
             document.execCommand('insertText', false, ${JSON.stringify(content)});
             await wait(800);
 
@@ -896,9 +901,9 @@ async function refreshHashtags(content) {
   try {
     // 1) أزل سطر الهاشتاقات الأخير إن وجد (سطر كله هاشتاقات)
     const lines = content.split('\n');
-    while (lines.length > 1) {
+    while (lines.length > 0) {
       const last = lines[lines.length - 1].trim();
-      if (last && /^(#[^\s#]+[\s]*)+$/.test(last)) lines.pop();
+      if (last === '' || /^(#[^\s#]+[\s]*)+$/.test(last)) lines.pop();
       else break;
     }
     let base = lines.join('\n').trimEnd();
@@ -916,8 +921,8 @@ async function refreshHashtags(content) {
       const candidate = base + '\n' + [...fresh, tag].join(' ');
       if (candidate.length <= 280) fresh.push(tag);
     }
-    if (fresh.length === 0) return base.length <= 280 ? base : content;
-    return base + '\n' + fresh.join(' ');
+    if (fresh.length === 0) return (base && base.length <= 280) ? base : content;
+    return base ? (base + '\n' + fresh.join(' ')) : fresh.join(' ');
   } catch(e) { return content; }
 }
 
@@ -1096,30 +1101,49 @@ async function searchBing(query) {
   return { success: true, products: results, engine: 'bing' };
 }
 
+let lastDDGAt = 0; // آخر طلب DDG — للتهدئة بين البحثات المتتالية
+
 ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
-  const SITE = {
-    amazon:     'site:amazon.sa',
-    noon:       'site:noon.com/saudi-ar',
-    aliexpress: 'site:aliexpress.com',
+  const STORES = {
+    amazon:     { site: 'site:amazon.sa',          domain: 'amazon.',     loose: 'amazon.sa' },
+    noon:       { site: 'site:noon.com/saudi-ar',  domain: 'noon.com',    loose: 'noon.com' },
+    aliexpress: { site: 'site:aliexpress.com',     domain: 'aliexpress.', loose: 'aliexpress' },
   };
-  const site = SITE[source] || SITE.amazon;
-  const searchQuery = `${site} ${query}`;
+  const st = STORES[source] || STORES.amazon;
+  const strictQ = `${st.site} ${query}`;
+  const looseQ  = `${st.loose} ${query}`;
 
-  // 1) DuckDuckGo — 2) إعادة محاولة عند الحظر — 3) احتياطي Bing
-  let result = await searchDuckDuckGo(searchQuery);
+  const byDomain = (r) => {
+    if (!r.success) return r;
+    const filtered = r.products.filter(p => p.url.toLowerCase().includes(st.domain));
+    return filtered.length ? { ...r, products: filtered } : { success: false, error: 'EMPTY_AFTER_FILTER', products: [] };
+  };
 
-  if (result.rateLimited) {
-    await new Promise(r => setTimeout(r, 4000));
-    result = await searchDuckDuckGo(searchQuery);
+  // خطة البحث: نتجنب DDG إذا استُخدم قبل أقل من 8 ثوانٍ (يحظر الطلبات المتتالية)
+  const ddgCooling = (Date.now() - lastDDGAt) < 8000;
+
+  const tryDDG = async (q) => {
+    lastDDGAt = Date.now();
+    return byDomain(await searchDuckDuckGo(q));
+  };
+  const tryBing = async (q) => byDomain(await searchBing(q));
+
+  let result;
+  if (!ddgCooling) {
+    result = await tryDDG(strictQ);
+    if (result.rateLimited) { await new Promise(r => setTimeout(r, 4000)); result = await tryDDG(strictQ); }
+    if (!result.success) result = await tryBing(strictQ);
+    if (!result.success) result = await tryBing(looseQ);
+    if (!result.success) result = await tryDDG(looseQ);
+  } else {
+    // DDG في فترة تهدئة — ابدأ بـ Bing مباشرة
+    result = await tryBing(strictQ);
+    if (!result.success) result = await tryBing(looseQ);
+    if (!result.success) result = await tryDDG(looseQ);
   }
 
   if (!result.success) {
-    const bing = await searchBing(searchQuery);
-    if (bing.success) return bing;
-  }
-
-  if (!result.success && (result.error === 'DDG_EMPTY' || /BING/.test(result.error || ''))) {
-    return { success: false, error: 'لم نجد نتائج — جرّب كلمات أدق (اسم المنتج + الماركة)', products: [] };
+    return { success: false, error: 'لم نجد نتائج — جرّب كلمات أدق أو أعد المحاولة بعد لحظات', products: [] };
   }
   return result;
 });
