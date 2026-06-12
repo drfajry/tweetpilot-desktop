@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.7.6';
+const APP_VERSION    = '1.7.8';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -1174,10 +1174,28 @@ async function searchBing(query) {
   const { status, body } = await simpleGet(url);
   if (status < 200 || status >= 300) return { success: false, error: `BING_${status}`, products: [] };
 
+  // فك روابط Bing التحويلية (bing.com/ck/a?...&u=a1<base64>) للحصول على الرابط الحقيقي
+  function decodeBingUrl(raw) {
+    try {
+      let u = raw.replace(/&amp;/g, '&');
+      if (/bing\.com\/ck\//i.test(u)) {
+        const uParam = u.match(/[?&]u=([^&]+)/)?.[1];
+        if (uParam) {
+          let b64 = uParam.replace(/^a1/, ''); // بادئة Bing
+          b64 = b64.replace(/-/g, '+').replace(/_/g, '/'); // base64url → base64
+          while (b64.length % 4) b64 += '=';
+          const decoded = Buffer.from(b64, 'base64').toString('utf8');
+          if (decoded.startsWith('http')) return decoded;
+        }
+      }
+      return u;
+    } catch(e) { return raw; }
+  }
+
   const items = [];
   // نتائج Bing: <li class="b_algo"> ... <h2><a href="URL">العنوان</a></h2>
   for (const m of body.matchAll(/<h2[^>]*><a[^>]+href="(http[^"]+)"[^>]*>([\s\S]*?)<\/a><\/h2>/g)) {
-    items.push({ url: m[1].replace(/&amp;/g, '&'), title: stripTags(m[2]), snippet: '' });
+    items.push({ url: decodeBingUrl(m[1]), title: stripTags(m[2]), snippet: '' });
   }
   const results = buildResults(items);
   if (results.length === 0) return { success: false, error: 'BING_EMPTY', products: [] };
