@@ -503,6 +503,7 @@ async function copyAllSeo(){
 const SCHED_STATE = {
   tweets: [],        // التغريدات المضافة
   dailyCount: 3,     // عدد التغريدات يومياً
+  startDate: '',     // تاريخ بدء التوزيع (فارغ = اليوم)
   scheduled: [],     // التغريدات المجدولة
   loading: false,
   newTweet: '',
@@ -516,6 +517,10 @@ const BEST_TIMES = {
   5: ['8:00 صباحاً', '11:00 صباحاً', '2:00 ظهراً', '6:00 مساءً', '9:00 مساءً'],
 };
 
+function todayStr(){
+  const d = new Date(); const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
 function renderSchedulePage(){
   const times = BEST_TIMES[SCHED_STATE.dailyCount] || BEST_TIMES[3];
   return `<div class="ptit">📋 مخطط المحتوى</div>
@@ -552,6 +557,11 @@ function renderSchedulePage(){
   <div class="card">
     <div class="ct">⚙️ إعدادات النشر</div>
     <div class="f">
+      <label>📅 تاريخ بدء الجدولة</label>
+      <input type="date" id="schedStartDate" value="${SCHED_STATE.startDate || todayStr()}" min="${todayStr()}" style="width:100%;color-scheme:dark" onchange="SCHED_STATE.startDate=this.value">
+      <div style="font-size:11px;color:#6b7280;margin-top:5px">اليوم الذي يبدأ منه ترتيب تغريداتك في المخطط. لا يُنشر تلقائياً — أنت من تنشر كل تغريدة بضغطة عند موعدها.</div>
+    </div>
+    <div class="f">
       <label>عدد التغريدات يومياً</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${[1,2,3,4,5].map(n=>`
@@ -559,7 +569,7 @@ function renderSchedulePage(){
       </div>
     </div>
     <div class="f" style="margin-bottom:0">
-      <label>أوقات النشر المثلى (بتوقيت السعودية)</label>
+      <label>الأوقات المقترحة للتوزيع (بتوقيت السعودية)</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
         ${times.map(t=>`<span style="padding:5px 12px;border-radius:16px;font-size:12px;background:#1d9bf011;border:1px solid #1d9bf033;color:#7ab8f5">🕐 ${t}</span>`).join('')}
       </div>
@@ -569,7 +579,7 @@ function renderSchedulePage(){
   ${SCHED_STATE.tweets.length > 0 ? `
   <div style="background:#1d9bf011;border:1px solid #1d9bf033;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#7ab8f5">
     📊 سيتم توزيع <strong>${SCHED_STATE.tweets.length}</strong> تغريدة على مدى <strong>${Math.ceil(SCHED_STATE.tweets.length/SCHED_STATE.dailyCount)}</strong> أيام
-    بمعدل <strong>${SCHED_STATE.dailyCount}</strong> تغريدة يومياً
+    بمعدل <strong>${SCHED_STATE.dailyCount}</strong> تغريدة يومياً، يبدأ ترتيبها من <strong>${SCHED_STATE.startDate ? new Date(SCHED_STATE.startDate+'T00:00:00').toLocaleDateString('ar-SA',{weekday:'long',day:'numeric',month:'long'}) : 'اليوم'}</strong>
   </div>
   <button class="btn btn-p" id="btnSmartSchedule" style="font-size:15px;padding:14px;margin-bottom:16px" ${SCHED_STATE.loading?'disabled':''}>
     ${SCHED_STATE.loading ? '<span class="spin"></span> جاري التوزيع...' : '📋 توزيع على المخطط'}
@@ -618,7 +628,8 @@ function bindSchedulePage(){
     if(SCHED_STATE.tweets.length === 0){ alert('أضف تغريدات أولاً'); return; }
     SCHED_STATE.loading = true;
     render();
-    const startDate = new Date(); // التوزيع يبدأ من اليوم دائماً (الأوقات الماضية يتخطاها التوزيع تلقائياً)
+    // التاريخ المختار (أو اليوم) — يُفسَّر بالتوقيت المحلي
+    const startDate = SCHED_STATE.startDate ? new Date(SCHED_STATE.startDate + 'T00:00:00') : new Date();
     startDate.setHours(0,0,0,0);
     const r = await window.api.smartSchedule({
       tweets: SCHED_STATE.tweets,
@@ -1462,7 +1473,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.7.6'; // يُحدّث تلقائياً من main
+let APP_VER = '1.7.8'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
