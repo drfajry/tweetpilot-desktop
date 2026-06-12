@@ -1104,7 +1104,7 @@ function renderS1(){
     <div class="ct">📝 نص التغريدة</div>
     <textarea id="freeTweet" placeholder="اكتب تغريدتك هنا..." style="width:100%;min-height:130px;resize:vertical" oninput="S.tweet=this.value;updCC(this.value.length)">${escHtml(S.tweet)}</textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-      <span style="font-size:11px;color:#6b7280">${S.selTrends.length?'سيُضاف عند المتابعة: '+S.selTrends.map(t=>escHtml(t.name)).join(' '):'لم تختر ترندات — يمكنك الرجوع لاختيارها أولاً'}</span>
+      <span style="font-size:11px;color:#6b7280">${(()=>{const p=[];if(S.selTrends.length)p.push(S.selTrends.map(t=>escHtml(t.name)).join(' '));if((S.customTags||'').trim())p.push(escHtml(S.customTags.trim()));return p.length?'سيُضاف عند المتابعة: '+p.join(' '):'لم تختر ترندات ولا هاشتاقات — يمكنك الرجوع لإضافتها أولاً';})()}</span>
       <span class="tcc" style="font-size:12px;color:${overLimit?'#ff4444':cc>240?'#ff8800':'#00c896'}">${cc}/280</span>
     </div>
     <div style="margin-top:14px">
@@ -1201,9 +1201,13 @@ function bindS1(){
   document.getElementById('prodSearch')?.addEventListener('keydown', e=>{ if(e.key==='Enter') fetchBs(); });
   document.getElementById('btnGen')?.addEventListener('click', genTweet);
   document.getElementById('btnN1')?.addEventListener('click', ()=>{
-    if(S.mode==='free' && S.selTrends.length){
-      const tags = S.selTrends.map(t=>t.name).join(' ');
-      if(!S.tweet.includes(tags)) {
+    if(S.mode==='free'){
+      // ادمج الترندات المختارة + الهاشتاقات اليدوية معاً
+      const parts = [];
+      if(S.selTrends.length) parts.push(S.selTrends.map(t=>t.name).join(' '));
+      if((S.customTags||'').trim()) parts.push(S.customTags.trim());
+      const tags = parts.join(' ').trim();
+      if(tags && !S.tweet.includes(tags)) {
         const candidate = S.tweet.trimEnd() + '\n' + tags;
         if(candidate.length <= 280) S.tweet = candidate;
       }
@@ -1458,7 +1462,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.7.5'; // يُحدّث تلقائياً من main
+let APP_VER = '1.7.6'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
