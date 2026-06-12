@@ -25,9 +25,21 @@ class JsonDB {
   }
 
   _save() {
+    // كتابة ذرية: نكتب لملف مؤقت ثم نعيد تسميته — يمنع تلف البيانات عند انقطاع مفاجئ
+    // قفل بسيط: إن كان حفظ جارياً، أجّل هذا الحفظ حتى ينتهي السابق (يمنع تضارب الكتابة)
+    if (this._saving) { this._pending = true; return; }
+    this._saving = true;
     try {
-      fs.writeFileSync(this.file, JSON.stringify({ data: this.data, counters: this.counters }));
+      // حد السجل: احتفظ بآخر 1000 تغريدة فقط (يمنع تضخم الملف بلا حدود)
+      if (this.data.tweet_history && this.data.tweet_history.length > 1000) {
+        this.data.tweet_history = this.data.tweet_history.slice(-1000);
+      }
+      const tmp = this.file + '.tmp';
+      fs.writeFileSync(tmp, JSON.stringify({ data: this.data, counters: this.counters }));
+      fs.renameSync(tmp, this.file);
     } catch(e) {}
+    this._saving = false;
+    if (this._pending) { this._pending = false; this._save(); } // نفّذ الحفظ المؤجّل
   }
 
   // واجهة متوافقة مع better-sqlite3
@@ -153,7 +165,7 @@ class Statement {
     if (/SELECT \* FROM scheduled_tweets ORDER BY scheduled_at ASC/i.test(sql)) {
       return [...this.db.data.scheduled_tweets]
         .sort((a,b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
-        .slice(0, 100);
+        .slice(0, 500); // عرض حتى 500 منشور مجدول
     }
 
     // pending scheduled <= now
