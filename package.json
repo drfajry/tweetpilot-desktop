@@ -1,6 +1,6 @@
 {
   "name": "nashir",
-  "version": "1.7.0",
+  "version": "1.7.5",
   "description": "ناشر - نشرك أذكى على مواقع التواصل الاجتماعي",
   "author": "Nashir",
   "main": "main.js",
@@ -9,7 +9,6 @@
     "build-win": "electron-builder --win --x64 --publish never"
   },
   "dependencies": {
-    "twitter-api-v2": "^1.17.0",
     "electron-updater": "^6.1.7"
   },
   "devDependencies": {
