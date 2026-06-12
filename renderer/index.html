@@ -186,6 +186,16 @@ async function init(){
     return;
   }
   S.user = await window.api.getAuth();
+  if (lic.grace) {
+    // وضع السماح: الخادم غير متاح لكن العميل ضمن مهلة 7 أيام
+    setTimeout(() => {
+      const b = document.createElement('div');
+      b.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:997;background:#f59e0b18;border:1px solid #f59e0b44;color:#f59e0b;border-radius:10px;padding:8px 16px;font-size:12px;max-width:90%';
+      b.textContent = `⚠️ تعذّر الوصول لخادم التحقق — تعمل في وضع غير متصل (متبقٍّ ${lic.graceDaysLeft} ${lic.graceDaysLeft===1?'يوم':'أيام'}). تأكد من اتصالك قريباً.`;
+      document.body.appendChild(b);
+      setTimeout(() => b.remove(), 12000);
+    }, 800);
+  }
   // استقبال إشعار التحديث
   window.api.onUpdateAvailable(data => { S.updateAvailable=data; showUpdateBanner(data); });
   loadSaved();
@@ -647,8 +657,9 @@ let DUE_COUNT = 0;
 let POSTING_ID = null;
 
 function getDueItems(){
-  const endOfToday = new Date(); endOfToday.setHours(23,59,59,999);
-  return SCHED_STATE.scheduled.filter(t => t.status==='pending' && new Date(t.scheduled_at) <= endOfToday);
+  // المستحق = حان وقته فعلاً (موعده <= الآن) — لا يشمل ساعات اليوم القادمة
+  const now = new Date();
+  return SCHED_STATE.scheduled.filter(t => t.status==='pending' && new Date(t.scheduled_at) <= now);
 }
 
 function updateDueCount(){
@@ -795,13 +806,19 @@ async function postNow(id){
   if(!item) return;
   POSTING_ID = id;
   render();
-  const r = await window.api.postScheduled({ id, content: item.content });
-  POSTING_ID = null;
-  if(r.success){
+  let r;
+  try {
+    r = await window.api.postScheduled({ id, content: item.content });
+  } catch(e) {
+    r = { success: false, error: e.message || 'خطأ غير متوقع' };
+  } finally {
+    POSTING_ID = null; // يُصفّر دائماً مهما حدث — لا يبقى عالقاً
+  }
+  if(r && r.success){
     await loadScheduledList();
     render();
   } else {
-    alert('فشل النشر: ' + (r.error||'') + '\nالمنشور لا يزال في المخطط — حاول مرة أخرى.');
+    alert('فشل النشر: ' + ((r&&r.error)||'') + '\nالمنشور لا يزال في المخطط — حاول مرة أخرى.');
     render();
   }
 }
@@ -1286,18 +1303,23 @@ function bindS2(){
     btn.disabled=true; btn.textContent='\u23f3 جاري فتح إكس...';
     if(status){ status.style.display='block'; status.innerHTML='\ud83c\udf10 فتحنا إكس — التغريدة مكتوبة والصور مرفقة، اضغط زر "نشر" هناك<br><span style="color:#00c896;font-size:11px">🔒 النافذة تعرض موقع x.com الرسمي مباشرة — ناشر لا يرى كلمة مرورك ولا يخزّنها، وجلستك تبقى داخل جهازك فقط</span>'; }
 
-    const result = await window.api.puppeteerPost({ content: S.tweet, images: S.prodImages });
+    let result;
+    try {
+      result = await window.api.puppeteerPost({ content: S.tweet, images: S.prodImages });
+    } catch(e) {
+      result = { success: false, error: e.message || 'خطأ غير متوقع' };
+    }
 
-    if(result.success){
+    if(result && result.success){
       S.postResult = { success: true, msg: '\ud83c\udf89 تم النشر بنجاح!', sub: 'نُشرت تغريدتك على إكس' };
       render();
-    } else if(result.error === 'CLOSED'){
+    } else if(result && result.error === 'CLOSED'){
       btn.disabled=false; btn.textContent='\ud83d\ude80 فتح إكس — التغريدة والصور جاهزة للإرسال';
       if(status){ status.textContent='\u2139\ufe0f أُغلقت النافذة قبل النشر — التغريدة ما زالت هنا، جرّب متى شئت'; }
     } else {
       btn.disabled=false; btn.textContent='\ud83d\ude80 فتح إكس — التغريدة والصور جاهزة للإرسال';
       if(status) status.style.display='none';
-      alert('\u274c تعذّر فتح إكس:\n' + (result.error || 'خطأ غير معروف') + '\n\nيمكنك نسخ التغريدة ونشرها يدوياً.');
+      alert('\u274c تعذّر فتح إكس:\n' + ((result&&result.error) || 'خطأ غير معروف') + '\n\nيمكنك نسخ التغريدة ونشرها يدوياً.');
     }
   });
 
@@ -1436,7 +1458,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.7.0'; // يُحدّث تلقائياً من main
+let APP_VER = '1.7.5'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1525,9 +1547,15 @@ window.manualUpdateCheck = async () => {
   if(el) el.textContent = '⏳ جاري التحقق من GitHub...';
   let answered = false;
   const done = (msg, color) => { answered = true; if(el){ el.textContent = msg; el.style.color = color||'#6b7280'; } if(btn) btn.disabled = false; };
-  window.api.onUpdateAvailable(d => { if(!answered) done(`🆕 يوجد إصدار جديد v${d.latest} — سيظهر شريط التحديث بالأعلى`, '#00c896'); });
-  window.api.onUpdateNotAvail(() => { if(!answered) done(`✅ أنت على أحدث نسخة (v${APP_VER})`, '#00c896'); });
-  window.api.onUpdateError(d => { if(!answered) done('⚠️ تعذر التحقق: ' + (d.error||''), '#f59e0b'); });
+  // سجّل المستمعات مرة واحدة فقط طوال الجلسة (يمنع تكدّسها مع كل ضغطة)
+  if(!window.__updListeners){
+    window.__updListeners = true;
+    window.api.onUpdateAvailable(d => { if(window.__updPending){ window.__updPending(); window.__updPending=null; } });
+    window.api.onUpdateNotAvail(() => { if(window.__updDone){ window.__updDone(`✅ أنت على أحدث نسخة (v${APP_VER})`,'#00c896'); } });
+    window.api.onUpdateError(d => { if(window.__updDone){ window.__updDone('⚠️ تعذر التحقق: ' + (d.error||''), '#f59e0b'); } });
+  }
+  window.__updPending = () => done('🆕 يوجد إصدار جديد — سيظهر شريط التحديث بالأعلى', '#00c896');
+  window.__updDone = (m,c) => { if(!answered) done(m,c); };
   try { await window.api.checkUpdate(); } catch(e) {}
   setTimeout(()=>{ if(!answered) done('⚠️ لم يصل رد — تحقق من الإنترنت أو أن آخر إصدار منشور في GitHub Releases', '#f59e0b'); }, 15000);
 };
