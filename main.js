@@ -27,7 +27,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.6.9';
+const APP_VERSION    = '1.7.0';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -440,11 +440,28 @@ async function openComposeWindow(content, images = []) {
             }
             if (!box) return 'NO_BOX';
 
-            // تركيز ثم insertText
+            // تركيز ثم لصق حقيقي — محرر إكس (React) لا يفعّل الهاشتاقات/الروابط إلا عبر حدث paste
             box.focus();
             await wait(300);
-            document.execCommand('insertText', false, ${JSON.stringify(content)});
-            await wait(900);
+
+            const TXT = ${JSON.stringify(content)};
+            let pasted = false;
+            try {
+              const dt = new DataTransfer();
+              dt.setData('text/plain', TXT);
+              const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+              box.dispatchEvent(ev);
+              pasted = true;
+            } catch(e) { pasted = false; }
+            await wait(800);
+
+            // احتياط: لو لم يلتقط اللصق، عُد لـ insertText (نص بلا تفعيل أفضل من لا شيء)
+            const okNow = (box.textContent || '').replace(/\\s+/g,' ').includes(TXT.replace(/\\s+/g,' ').substring(0,12));
+            if (!okNow) {
+              box.focus();
+              document.execCommand('insertText', false, TXT);
+              await wait(700);
+            }
 
             // أرفق الصور عبر حقل الملفات المخفي
             const IMGS = ${JSON.stringify(imgs)};
