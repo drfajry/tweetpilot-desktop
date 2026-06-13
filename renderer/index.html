@@ -1157,8 +1157,9 @@ function renderS1(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
         ${S.prodImages.map((img,i)=>`
           <div style="position:relative">
-            <img src="${img}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #1a2540">
-            <button onclick="S.prodImages.splice(${i},1);render()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+            <img src="${img}" referrerpolicy="no-referrer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #1a2540">
+            <div style="display:none;width:72px;height:72px;border-radius:8px;border:1px solid #1a2540;background:#0a0f1a;align-items:center;justify-content:center;font-size:10px;color:#6b7280;text-align:center;padding:4px">تعذّر تحميل الصورة</div>
+            <button onclick="S.prodImages.splice(${i},1);render()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
           </div>`).join('')}
       </div>
     </div>` : ''}
@@ -1484,7 +1485,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.8.6'; // يُحدّث تلقائياً من main
+let APP_VER = '1.8.7'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
