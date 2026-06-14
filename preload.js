@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('api', {
   openExternal:     (url)    => ipcRenderer.invoke('open-external', url),
   refocusWindow:    ()       => ipcRenderer.invoke('refocus-window'),
   copyToClipboard:  (text)   => ipcRenderer.invoke('copy-to-clipboard', text),
+  getSettings:      ()       => ipcRenderer.invoke('get-settings'),
+  setSettings:      (data)   => ipcRenderer.invoke('set-settings', data),
   onUpdateAvailable:(cb)     => ipcRenderer.on('update-available',     (_, d) => cb(d)),
   onUpdateNotAvail: (cb)     => ipcRenderer.on('update-not-available', (_, d) => cb(d)),
   onUpdateProgress: (cb)     => ipcRenderer.on('update-progress',      (_, d) => cb(d)),
