@@ -1057,7 +1057,7 @@ function bindConnect(){
 function renderS0(){
   const cards=S.trends.map((t,i)=>`<div class="tc ${S.selTrends.find(s=>s.name===t.name)?'sel':''}" onclick="toggleTrendIdx(${i})">
     <div style="display:flex;justify-content:space-between">
-      <span class="tn">${escHtml(t.name)}</span>
+      <span class="tn">${escHtml(t.name)}${t.isHashtag===false?' <span style="font-size:9px;color:#9ca3af;background:#9ca3af22;border-radius:5px;padding:1px 5px">كلمة</span>':''}</span>
       ${S.selTrends.find(s=>s.name===t.name)?'<span style="width:16px;height:16px;border-radius:50%;background:#1d9bf0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span>':''}
     </div>
     <div class="tv">ترند حالي</div>
@@ -1492,7 +1492,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.8.9'; // يُحدّث تلقائياً من main
+let APP_VER = '1.9.0'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
