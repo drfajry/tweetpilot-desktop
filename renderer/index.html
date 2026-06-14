@@ -212,6 +212,9 @@ function renderOtherDevice(){
       <input id="licInput" placeholder="XXXXX-XXXXX-XXXXX" style="text-align:center;font-size:16px;letter-spacing:2px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
       <button class="btn-big" id="btnActivate" style="width:100%">✅ تفعيل كود جديد</button>
       <div id="licError" style="color:#ff8080;font-size:13px;text-align:center"></div>
+      <button class="btn-big" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706)" onclick="showPaymentPage()">
+        🛒 اشترك الآن — ${PAYMENT_INFO.price} ريال/سنة
+      </button>
       <div style="display:flex;gap:8px">
         <button class="btn btn-g" style="flex:1;padding:11px" onclick="openWhatsApp(SUPPORT_MSG_HELP)" >💬 واتساب</button>
         <button class="btn btn-g" style="flex:1;padding:11px;color:#1d9bf0;border-color:#1d9bf0" onclick="openXDM()">✉️ خاص إكس</button>
@@ -1492,7 +1495,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.9.0'; // يُحدّث تلقائياً من main
+let APP_VER = '1.9.1'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
