@@ -119,7 +119,7 @@ const S={
   customTags:'',
   bsSrc:'amazon', products:[], prodSearch:'',
   mode:'general', // free | general | marketing
-  afUrl:'', prodDesc:'', prodImages:[], storeImages:[], tone:'hype', category:'',
+  afUrl:'', prodDesc:'', prodImages:[], storeImages:[], noonCode:'', tone:'hype', category:'',
   tweet:'', saved:[],
   copySuccess:false, postResult:null,
 };
@@ -186,6 +186,7 @@ async function init(){
     return;
   }
   S.user = await window.api.getAuth();
+  try { const st = await window.api.getSettings(); if(st && st.noonCode) S.noonCode = st.noonCode; } catch(e) {}
   if (lic.grace) {
     // وضع السماح: الخادم غير متاح لكن العميل ضمن مهلة 7 أيام
     setTimeout(() => {
@@ -1146,6 +1147,12 @@ function renderS1(){
         <button class="btn btn-g" id="btnFetchImg" style="width:auto;padding:10px 14px;font-size:12px" title="سحب صورة المنتج تلقائياً">🖼️ جلب صورة</button>
       </div>
       <div style="font-size:11px;color:#f59e0b;background:#f59e0b12;border:1px solid #f59e0b33;border-radius:8px;padding:8px 12px;margin-top:8px;line-height:1.8">⚠️ تنبيه: الرابط المسحوب من البحث هو رابط عام للمنتج. <strong>استبدله برابط الأفلييت الخاص بك.</strong></div>
+      ${/noon\.com/i.test(S.afUrl) ? `
+      <div class="f" style="margin-top:12px;background:#f59e0b08;border:1px dashed #f59e0b44;border-radius:10px;padding:12px">
+        <label style="color:#f59e0b">🛒 كود خصم نون الخاص بك (بدل رابط العمولة)</label>
+        <input id="noonCode" placeholder="مثال: FAI16" value="${escHtml(S.noonCode||'')}" style="width:100%;text-transform:uppercase" oninput="S.noonCode=this.value.toUpperCase();window.api.setSettings({noonCode:S.noonCode})">
+        <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.7">نون يعتمد على أكواد الخصم لا روابط العمولة. أدخل كودك ليُضاف للتغريدة تلقائياً (يُحفظ لكل مرة تختار فيها منتج نون).</div>
+      </div>` : ''}
     </div>`:''}
     <div class="f">
       <label>${M==='marketing'?'وصف المنتج (اختياري)':'موضوع التغريدة (اختياري — اتركه فارغاً لتغريدة عامة متنوعة)'}</label>
@@ -1423,7 +1430,7 @@ async function genTweet(){
   S.afUrl=af; S.prodDesc=document.getElementById('prodDesc')?.value?.trim()||'';
   const btn=document.getElementById('btnGen'), ld=document.getElementById('genLd');
   btn.disabled=true; if(ld) ld.style.display='block';
-  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.mode==='marketing'?S.afUrl:'', productDesc:S.prodDesc, tone:S.tone, customTags:S.customTags, category:S.mode==='marketing'?S.category:''});
+  const r=await window.api.generateTweet({trends:S.selTrends, affiliateUrl:S.mode==='marketing'?S.afUrl:'', productDesc:S.prodDesc, tone:S.tone, customTags:S.customTags, category:S.mode==='marketing'?S.category:'', noonCode:S.noonCode});
   if(r.success) S.tweet=r.tweet;
   btn.disabled=false; if(ld) ld.style.display='none';
   render();
@@ -1485,7 +1492,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.8.8'; // يُحدّث تلقائياً من main
+let APP_VER = '1.8.9'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
