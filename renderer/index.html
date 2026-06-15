@@ -1064,12 +1064,25 @@ function renderHdr(){
     if(S.page==='compose'){
       st.innerHTML=STEPS.map((n,i)=>`<div class="sp ${i===S.step?'active':i<S.step?'done':''}" onclick="if(${i}<${S.step})goStep(${i})"><span class="sp-n">${i<S.step?'✓':i+1}</span>${n}</div>`).join('');
     } else { st.innerHTML=''; }
-    hr.innerHTML=`
-      <button class="btn btn-g btn-sm" onclick="goPage('home')" style="${S.page==='home'?'color:#1d9bf0;border-color:#1d9bf0':''}">🏠 الرئيسية</button>
+
+    // أدوات سياقية: تظهر أدوات الخدمة المختارة فقط
+    const isX = (S.page==='compose' || S.page==='schedule' || S.page==='saved');
+    const isYT = (S.page==='seo');
+
+    // أدوات إكس (إنشاء، المخطط، المحفوظة) — تظهر داخل خدمة إكس فقط
+    const xTools = isX ? `
       <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
       <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">📋 المخطط ${DUE_COUNT>0?`<span style="background:#f59e0b;color:#0a0f1a;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700">${DUE_COUNT}</span>`:''}</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>
-      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="${S.page==='seo'?'color:#1d9bf0;border-color:#1d9bf0':''}">📈 يوتيوب</button>
+      <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>` : '';
+
+    // أدوات يوتيوب — تظهر داخل خدمة يوتيوب فقط
+    const ytTools = isYT ? `
+      <button class="btn btn-g btn-sm" onclick="goPage('seo')" style="color:#ff0000;border-color:#ff0000">📈 تحسين يوتيوب</button>` : '';
+
+    hr.innerHTML=`
+      <button class="btn btn-g btn-sm" onclick="goPage('home')" style="${S.page==='home'?'color:#1d9bf0;border-color:#1d9bf0':''}">🏠 الرئيسية</button>
+      ${xTools}
+      ${ytTools}
       <button class="btn btn-g btn-sm" onclick="openWhatsApp(SUPPORT_MSG_HELP)" style="color:#25D366;border-color:#25D366">💬 دعم</button>
       <button class="btn btn-g btn-sm" onclick="goPage('about')" style="${S.page==='about'?'color:#1d9bf0;border-color:#1d9bf0':''}">ℹ️ حول</button>
       <div class="ubadge"><span class="uname">🔑 ${S.user.username}</span></div>
@@ -1534,7 +1547,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.0.3'; // يُحدّث تلقائياً من main
+let APP_VER = '2.0.4'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
