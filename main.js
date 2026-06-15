@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.9.4';
+const APP_VERSION    = '1.9.5';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -921,6 +921,54 @@ ipcMain.handle('verify-license', async (_, code) => {
 function settingsFile() {
   try { return require('path').join(app.getPath('userData'), '.settings.json'); } catch(e) { return null; }
 }
+// تشخيص صور المتاجر — يفحص المتاجر الثلاثة ويعيد المعطى الحقيقي (للدعم)
+ipcMain.handle('diagnose-images', async () => {
+  const TESTS = [
+    { store: 'amazon',     url: 'https://www.amazon.sa/s?k=' + encodeURIComponent('سماعة بلوتوث') },
+    { store: 'noon',       url: 'https://www.noon.com/saudi-ar/search/?q=' + encodeURIComponent('سماعة بلوتوث') },
+    { store: 'aliexpress', url: 'https://ar.aliexpress.com/wholesale?SearchText=' + encodeURIComponent('سماعة بلوتوث') + '&g=y' },
+  ];
+  const EXTRACT = {
+    amazon: `(()=>{const o=[];for(const c of document.querySelectorAll('div[data-asin][data-component-type="s-search-result"]')){const im=c.querySelector('img.s-image');if(!im)continue;o.push({src:(im.src||'').slice(0,100),srcset:(im.getAttribute('srcset')||'').slice(0,60)});if(o.length>=2)break;}return o;})()`,
+    noon: `(()=>{const o=[];for(const a of document.querySelectorAll('a[href*="/p/"]')){const im=a.querySelector('img');o.push({aria:a.getAttribute('aria-label'),title:a.getAttribute('title'),imgSrc:im?(im.src||'').slice(0,100):'NO_IMG',imgData:im?(im.getAttribute('data-src')||''):'',alt:im?(im.alt||'').slice(0,40):''});if(o.length>=2)break;}return o;})()`,
+    aliexpress: `(()=>{const o=[];for(const a of document.querySelectorAll('a[href*="/item/"]')){const im=a.querySelector('img');o.push({imgSrc:im?(im.src||'').slice(0,100):'NO_IMG',imgSrcset:im?(im.getAttribute('srcset')||'').slice(0,80):'',alt:im?(im.alt||'').slice(0,40):''});if(o.length>=2)break;}return o;})()`,
+  };
+
+  function probe(store, url) {
+    return new Promise((resolve) => {
+      let win = new BrowserWindow({ width: 1280, height: 900, show: false, webPreferences: { partition: 'persist:nashir-shop' } });
+      win.webContents.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      let done = false;
+      const finish = (d) => { if (done) return; done = true; try { if(!win.isDestroyed()) win.destroy(); } catch(e){} resolve(d); };
+      setTimeout(() => finish({ store, error: 'TIMEOUT' }), 35000);
+      let tries = 0;
+      const read = async () => {
+        if (done || win.isDestroyed()) return;
+        try {
+          await win.webContents.executeJavaScript('window.scrollTo(0,1200);true;').catch(()=>{});
+          const items = await win.webContents.executeJavaScript(EXTRACT[store]);
+          if (items && items.length) {
+            const firstImg = items[0].src || items[0].imgSrc || items[0].imgData || '';
+            let imgTest = 'NO_URL';
+            if (firstImg && firstImg.startsWith('http')) {
+              imgTest = await win.webContents.executeJavaScript(`(async()=>{try{const r=await fetch(${JSON.stringify(firstImg)},{referrerPolicy:'no-referrer'});const b=await r.blob();let dec=false;try{dec=!!(await createImageBitmap(b));}catch(e){}return{status:r.status,type:b.type,size:b.size,decode:dec};}catch(e){return{err:String(e).slice(0,60)};}})()`).catch(e => ({ jsErr: String(e).slice(0,60) }));
+            }
+            return finish({ store, items, firstImg: firstImg.slice(0,100), imgTest });
+          }
+        } catch(e) {}
+        if (++tries < 12) setTimeout(read, 2500); else finish({ store, error: 'NO_ITEMS' });
+      };
+      win.webContents.on('did-finish-load', () => setTimeout(read, 3000));
+      win.webContents.on('did-stop-loading', () => setTimeout(() => { if(!done) read(); }, 4000));
+      win.loadURL(url);
+    });
+  }
+
+  const out = [];
+  for (const t of TESTS) out.push(await probe(t.store, t.url));
+  return out;
+});
+
 ipcMain.handle('get-settings', async () => {
   try {
     const f = settingsFile();
