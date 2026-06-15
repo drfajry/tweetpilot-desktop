@@ -1495,7 +1495,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '1.9.4'; // يُحدّث تلقائياً من main
+let APP_VER = '1.9.5'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1572,6 +1572,9 @@ function renderAboutPage(){
     <button class="btn btn-g" id="btnManualUpdate" onclick="manualUpdateCheck()" style="margin-top:16px;font-size:13px">🔄 تحقق من التحديث الآن</button>
     <div id="updateCheckStatus" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
 
+    <button class="btn btn-g" onclick="runImageDiagnostic()" style="margin-top:10px;font-size:12px;opacity:.7">🔧 فحص صور المتاجر (للدعم الفني)</button>
+    <div id="diagResult" style="display:none;margin-top:10px;background:#0a0f1a;border:1px solid #1a2540;border-radius:10px;padding:12px;text-align:left;direction:ltr;font-family:monospace;font-size:10px;color:#9fb0c8;white-space:pre-wrap;max-height:300px;overflow:auto;user-select:all"></div>
+
     ${SPONSOR.enabled ? `
     <div class="card" style="margin-top:16px;border-color:#f59e0b33;cursor:pointer" onclick="window.api.openExternal(SPONSOR.url)">
       <div style="font-size:10px;color:#f59e0b;font-weight:700;margin-bottom:8px">⭐ برعاية</div>
@@ -1592,6 +1595,17 @@ function renderAboutPage(){
     <div style="font-size:11px;color:#3a4456;margin-top:20px">© ${new Date().getFullYear()} ناشر — جميع الحقوق محفوظة</div>
   </div>`;
 }
+
+window.runImageDiagnostic = async () => {
+  const box = document.getElementById('diagResult');
+  if(box){ box.style.display='block'; box.textContent='⏳ جاري الفحص... قد يأخذ دقيقة، انتظر.'; }
+  try {
+    const r = await window.api.diagnoseImages();
+    if(box){ box.textContent = JSON.stringify(r, null, 2); }
+  } catch(e) {
+    if(box){ box.textContent = 'خطأ: ' + (e.message||e); }
+  }
+};
 
 window.manualUpdateCheck = async () => {
   const el = document.getElementById('updateCheckStatus');
