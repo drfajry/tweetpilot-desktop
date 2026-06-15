@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.9.3';
+const APP_VERSION    = '1.9.4';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -429,41 +429,42 @@ function fetchImageViaBrowser(url) {
     let win = null;
     let done = false;
     const finish = (v) => { if (done) return; done = true; try { if (win && !win.isDestroyed()) win.destroy(); } catch(e){} win = null; resolve(v); };
+    const convert = async () => {
+      if (done || !win || win.isDestroyed()) return;
+      try {
+        const dataUrl = await win.webContents.executeJavaScript(`
+          (async () => {
+            try {
+              const res = await fetch(${JSON.stringify(url)}, { referrerPolicy: 'no-referrer' });
+              if (!res.ok) return null;
+              const blob = await res.blob();
+              if (blob.size > 8*1024*1024) return null;
+              const bmp = await createImageBitmap(blob).catch(() => null);
+              if (!bmp) return null;
+              const canvas = document.createElement('canvas');
+              let w = bmp.width, h = bmp.height;
+              const MAX = 2000;
+              if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+              return canvas.toDataURL('image/png');
+            } catch(e) { return null; }
+          })()
+        `);
+        finish(dataUrl && dataUrl.startsWith('data:image/png') ? dataUrl : null);
+      } catch(e) { finish(null); }
+    };
     try {
-      win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:nashir-shop' } });
-      const timer = setTimeout(() => finish(null), 15000);
-      win.webContents.on('did-finish-load', async () => {
-        try {
-          const dataUrl = await win.webContents.executeJavaScript(`
-            (async () => {
-              try {
-                const res = await fetch(${JSON.stringify(url)}, { referrerPolicy: 'no-referrer' });
-                if (!res.ok) return null;
-                const blob = await res.blob();
-                if (blob.size > 8*1024*1024) return null;
-                // حمّل الصورة ثم أعد ترميزها PNG عبر canvas (يفك AVIF/WEBP)
-                const bmp = await createImageBitmap(blob).catch(() => null);
-                if (!bmp) return null;
-                const canvas = document.createElement('canvas');
-                // حدّ أقصى للأبعاد كي لا تكون ضخمة
-                let w = bmp.width, h = bmp.height;
-                const MAX = 2000;
-                if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
-                canvas.width = w; canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(bmp, 0, 0, w, h);
-                // PNG مضمون القبول في إكس
-                return canvas.toDataURL('image/png');
-              } catch(e) { return null; }
-            })()
-          `);
-          clearTimeout(timer);
-          finish(dataUrl && dataUrl.startsWith('data:image/png') ? dataUrl : null);
-        } catch(e) { clearTimeout(timer); finish(null); }
-      });
       let origin = 'https://www.noon.com';
       try { origin = new URL(url).origin; } catch(e) {}
-      win.loadURL(origin + '/favicon.ico').catch(() => { try { win.loadURL('about:blank'); } catch(e){} });
+      win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:nashir-shop' } });
+      setTimeout(() => finish(null), 15000);
+      // حمّل صفحة HTML حقيقية من نطاق الصورة (لا ملف صورة) ليُطلق dom-ready بثقة
+      win.webContents.once('dom-ready', () => setTimeout(convert, 300));
+      win.webContents.on('did-finish-load', () => setTimeout(convert, 300));
+      win.loadURL(origin + '/robots.txt').catch(() => {
+        try { win.loadURL('data:text/html,<html><body>x</body></html>'); } catch(e) { finish(null); }
+      });
     } catch(e) { finish(null); }
   });
 }
