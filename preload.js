@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('api', {
   refocusWindow:    ()       => ipcRenderer.invoke('refocus-window'),
   copyToClipboard:  (text)   => ipcRenderer.invoke('copy-to-clipboard', text),
   getSettings:      ()       => ipcRenderer.invoke('get-settings'),
+  diagnoseImages:   ()       => ipcRenderer.invoke('diagnose-images'),
   setSettings:      (data)   => ipcRenderer.invoke('set-settings', data),
   onUpdateAvailable:(cb)     => ipcRenderer.on('update-available',     (_, d) => cb(d)),
   onUpdateNotAvail: (cb)     => ipcRenderer.on('update-not-available', (_, d) => cb(d)),
