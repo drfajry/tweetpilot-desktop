@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.9.8';
+const APP_VERSION    = '1.9.9';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -592,32 +592,44 @@ async function openComposeWindow(content, images = []) {
               await wait(700);
             }
 
-            // أرفق الصور عبر حقل الملفات المخفي
+            // أرفق الصور — عبر حدث paste في المحرّر (نفس الآلية التي نجحت مع النص)
+            // محرر إكس يقبل لصق الصور؛ حقن input.files لا يعمل لأن إكس لا يربطه إلا بعد ضغط زر الوسائط
             const IMGS = ${JSON.stringify(imgs)};
             if (IMGS.length > 0) {
-              try {
-                const dt = new DataTransfer();
-                let added = 0;
-                for (let i = 0; i < IMGS.length; i++) {
+              for (let i = 0; i < IMGS.length; i++) {
+                try {
+                  const res = await fetch(IMGS[i]);
+                  if (!res.ok) continue;
+                  const blob = await res.blob();
+                  if (!blob || !blob.type || !blob.type.startsWith('image/') || blob.size === 0) continue;
+                  const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
+                  const file = new File([blob], 'image' + (i+1) + '.' + ext, { type: blob.type });
+
+                  // الطريقة 1: لصق الصورة في المحرّر
+                  let ok = false;
                   try {
-                    const res = await fetch(IMGS[i]);
-                    if (!res.ok) continue;
-                    const blob = await res.blob();
-                    if (!blob || !blob.type || !blob.type.startsWith('image/') || blob.size === 0) continue;
-                    const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
-                    dt.items.add(new File([blob], 'image' + (i+1) + '.' + ext, { type: blob.type }));
-                    added++;
-                  } catch(e) {}
-                }
-                // فقط إن نجحنا فعلاً في تجهيز صورة صالحة (يمنع فتح منتقي الملفات)
-                if (added > 0) {
-                  const input = document.querySelector('input[data-testid="fileInput"]');
-                  if (input) {
-                    input.files = dt.files;
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    box.focus();
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+                    box.dispatchEvent(ev);
+                    ok = true;
+                  } catch(e) { ok = false; }
+                  await wait(2500); // امنح إكس وقتاً لرفع الصورة
+
+                  // الطريقة 2 (احتياط): حقن input الملفات إن وُجد فعلاً
+                  if (!ok) {
+                    const input = document.querySelector('input[type="file"][data-testid="fileInput"], input[type="file"][accept*="image"]');
+                    if (input) {
+                      const dt2 = new DataTransfer();
+                      dt2.items.add(file);
+                      input.files = dt2.files;
+                      input.dispatchEvent(new Event('change', { bubbles: true }));
+                      await wait(2500);
+                    }
                   }
-                }
-              } catch(e) { /* الصور اختيارية — النص الأهم */ }
+                } catch(e) {}
+              }
             }
             return 'OK';
           })()
@@ -1413,16 +1425,7 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
     amazon: {
       url: q => `https://www.amazon.sa/s?k=${encodeURIComponent(q)}&language=ar`,
       extract: `
-        (async () => {
-          async function toData(url){
-            try{
-              const r = await fetch(url, { referrerPolicy:'no-referrer' });
-              if(!r.ok) return '';
-              const b = await r.blob();
-              if(!b || b.size===0 || b.size>8000000) return '';
-              return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b);});
-            }catch(e){ return ''; }
-          }
+        (() => {
           const out = [];
           const cards = document.querySelectorAll('div[data-asin][data-component-type="s-search-result"]');
           for (const c of cards) {
@@ -1433,8 +1436,7 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             const imgEl = c.querySelector('img.s-image');
             const title = titleEl ? titleEl.textContent.trim() : '';
             if (!title) continue;
-            const image = imgEl ? await toData(imgEl.src) : '';
-            out.push({ url:'https://www.amazon.sa/dp/'+asin, title:title.substring(0,80), price:priceEl?priceEl.textContent.trim():'', image });
+            out.push({ url:'https://www.amazon.sa/dp/'+asin, title:title.substring(0,80), price:priceEl?priceEl.textContent.trim():'', image: imgEl?imgEl.src:'' });
             if (out.length >= 8) break;
           }
           return out;
@@ -1444,16 +1446,7 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
     noon: {
       url: q => `https://www.noon.com/saudi-ar/search/?q=${encodeURIComponent(q)}`,
       extract: `
-        (async () => {
-          async function toData(url){
-            try{
-              const r = await fetch(url, { referrerPolicy:'no-referrer' });
-              if(!r.ok) return '';
-              const b = await r.blob();
-              if(!b || b.size===0 || b.size>8000000) return '';
-              return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b);});
-            }catch(e){ return ''; }
-          }
+        (() => {
           const out = [];
           const seen = new Set();
           const links = document.querySelectorAll('a[href*="/p/"]');
@@ -1468,8 +1461,7 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             if(!title) title = (a.getAttribute('aria-label')||a.getAttribute('title')||'').trim();
             if(!title || title.length < 6) continue;
             if(/^(placeholder|image|loading)$/i.test(title)) continue;
-            const image = img ? await toData(img.src) : '';
-            out.push({ url:clean, title:title.substring(0,80), price:'', image });
+            out.push({ url:clean, title:title.substring(0,80), price:'', image: img?img.src:'' });
             if (out.length >= 8) break;
           }
           return out;
@@ -1479,16 +1471,7 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
     aliexpress: {
       url: q => `https://ar.aliexpress.com/wholesale?SearchText=${encodeURIComponent(q)}&g=y`,
       extract: `
-        (async () => {
-          async function toData(url){
-            try{
-              const r = await fetch(url, { referrerPolicy:'no-referrer' });
-              if(!r.ok) return '';
-              const b = await r.blob();
-              if(!b || b.size===0 || b.size>8000000) return '';
-              return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b);});
-            }catch(e){ return ''; }
-          }
+        (() => {
           const out = [];
           const seen = new Set();
           const seenImg = new Set();
@@ -1502,11 +1485,11 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             const img = a.querySelector('img');
             const title = (img && img.alt) ? img.alt.trim() : (a.textContent || '').trim();
             if (!title || title.length < 5) continue;
-            const src = img ? img.src : '';
+            let src = img ? img.src : '';
+            if(src && src.startsWith('//')) src = 'https:' + src;
             if(src && seenImg.has(src)) continue;
             if(src) seenImg.add(src);
-            const image = src ? await toData(src) : '';
-            out.push({ url:clean, title:title.substring(0,80), price:'', image });
+            out.push({ url:clean, title:title.substring(0,80), price:'', image: src });
             if (out.length >= 8) break;
           }
           return out;
@@ -1565,7 +1548,7 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
         await win.webContents.executeJavaScript('window.scrollTo(0, document.body.scrollHeight*0.6); true;').catch(()=>{});
         const products = await win.webContents.executeJavaScript(st.extract);
         if (products && products.length > 0) {
-          const withImg = products.filter(p => p.image && p.image.startsWith('data:')).length;
+          const withImg = products.filter(p => p.image && (p.image.startsWith('http') || p.image.startsWith('data:'))).length;
           // في المحاولات المبكرة، انتظر تحميل الصور (canvas يحتاج img.complete)؛ بعد 6 محاولات اقبل ما توفّر
           if (withImg === 0 && attempt < 6) {
             setTimeout(() => tryExtract(attempt + 1), 2200);
