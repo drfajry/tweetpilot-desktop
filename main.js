@@ -21,12 +21,8 @@ const https = require('https');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '1.9.7';
+const APP_VERSION    = '1.9.8';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -1413,17 +1409,14 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
     amazon: {
       url: q => `https://www.amazon.sa/s?k=${encodeURIComponent(q)}&language=ar`,
       extract: `
-        (() => {
-          function imgToDataUrl(img){
+        (async () => {
+          async function toData(url){
             try{
-              if(!img || !img.complete || !img.naturalWidth) return '';
-              const c = document.createElement('canvas');
-              let w = img.naturalWidth, h = img.naturalHeight;
-              const MAX = 1600;
-              if(w>MAX||h>MAX){const r=Math.min(MAX/w,MAX/h);w=Math.round(w*r);h=Math.round(h*r);}
-              c.width=w; c.height=h;
-              c.getContext('2d').drawImage(img,0,0,w,h);
-              return c.toDataURL('image/jpeg', 0.9);
+              const r = await fetch(url, { referrerPolicy:'no-referrer' });
+              if(!r.ok) return '';
+              const b = await r.blob();
+              if(!b || b.size===0 || b.size>8000000) return '';
+              return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b);});
             }catch(e){ return ''; }
           }
           const out = [];
@@ -1436,12 +1429,8 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             const imgEl = c.querySelector('img.s-image');
             const title = titleEl ? titleEl.textContent.trim() : '';
             if (!title) continue;
-            out.push({
-              url: 'https://www.amazon.sa/dp/' + asin,
-              title: title.substring(0,80),
-              price: priceEl ? priceEl.textContent.trim() : '',
-              image: imgToDataUrl(imgEl)
-            });
+            const image = imgEl ? await toData(imgEl.src) : '';
+            out.push({ url:'https://www.amazon.sa/dp/'+asin, title:title.substring(0,80), price:priceEl?priceEl.textContent.trim():'', image });
             if (out.length >= 8) break;
           }
           return out;
@@ -1451,17 +1440,14 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
     noon: {
       url: q => `https://www.noon.com/saudi-ar/search/?q=${encodeURIComponent(q)}`,
       extract: `
-        (() => {
-          function imgToDataUrl(img){
+        (async () => {
+          async function toData(url){
             try{
-              if(!img || !img.complete || !img.naturalWidth) return '';
-              const c = document.createElement('canvas');
-              let w = img.naturalWidth, h = img.naturalHeight;
-              const MAX = 1600;
-              if(w>MAX||h>MAX){const r=Math.min(MAX/w,MAX/h);w=Math.round(w*r);h=Math.round(h*r);}
-              c.width=w; c.height=h;
-              c.getContext('2d').drawImage(img,0,0,w,h);
-              return c.toDataURL('image/jpeg', 0.9);
+              const r = await fetch(url, { referrerPolicy:'no-referrer' });
+              if(!r.ok) return '';
+              const b = await r.blob();
+              if(!b || b.size===0 || b.size>8000000) return '';
+              return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b);});
             }catch(e){ return ''; }
           }
           const out = [];
@@ -1474,13 +1460,12 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             if (seen.has(clean)) continue;
             seen.add(clean);
             const img = a.querySelector('img');
-            let title = '';
-            if(img && img.alt) title = img.alt.trim();
+            let title = (img && img.alt) ? img.alt.trim() : '';
             if(!title) title = (a.getAttribute('aria-label')||a.getAttribute('title')||'').trim();
             if(!title || title.length < 6) continue;
             if(/^(placeholder|image|loading)$/i.test(title)) continue;
-            const dataImg = imgToDataUrl(img);
-            out.push({ url: clean, title: title.substring(0,80), price: '', image: dataImg });
+            const image = img ? await toData(img.src) : '';
+            out.push({ url:clean, title:title.substring(0,80), price:'', image });
             if (out.length >= 8) break;
           }
           return out;
@@ -1490,17 +1475,14 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
     aliexpress: {
       url: q => `https://ar.aliexpress.com/wholesale?SearchText=${encodeURIComponent(q)}&g=y`,
       extract: `
-        (() => {
-          function imgToDataUrl(img){
+        (async () => {
+          async function toData(url){
             try{
-              if(!img || !img.complete || !img.naturalWidth) return '';
-              const c = document.createElement('canvas');
-              let w = img.naturalWidth, h = img.naturalHeight;
-              const MAX = 1600;
-              if(w>MAX||h>MAX){const r=Math.min(MAX/w,MAX/h);w=Math.round(w*r);h=Math.round(h*r);}
-              c.width=w; c.height=h;
-              c.getContext('2d').drawImage(img,0,0,w,h);
-              return c.toDataURL('image/jpeg', 0.9);
+              const r = await fetch(url, { referrerPolicy:'no-referrer' });
+              if(!r.ok) return '';
+              const b = await r.blob();
+              if(!b || b.size===0 || b.size>8000000) return '';
+              return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res('');fr.readAsDataURL(b);});
             }catch(e){ return ''; }
           }
           const out = [];
@@ -1516,10 +1498,11 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             const img = a.querySelector('img');
             const title = (img && img.alt) ? img.alt.trim() : (a.textContent || '').trim();
             if (!title || title.length < 5) continue;
-            const dataImg = imgToDataUrl(img);
-            if(dataImg && seenImg.has(dataImg)) continue;
-            if(dataImg) seenImg.add(dataImg);
-            out.push({ url: clean, title: title.substring(0,80), price: '', image: dataImg });
+            const src = img ? img.src : '';
+            if(src && seenImg.has(src)) continue;
+            if(src) seenImg.add(src);
+            const image = src ? await toData(src) : '';
+            out.push({ url:clean, title:title.substring(0,80), price:'', image });
             if (out.length >= 8) break;
           }
           return out;
