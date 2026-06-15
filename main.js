@@ -21,12 +21,8 @@ const https = require('https');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.0.0';
+const APP_VERSION    = '2.0.1';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -592,44 +588,55 @@ async function openComposeWindow(content, images = []) {
               await wait(700);
             }
 
-            // أرفق الصور — عبر حدث paste في المحرّر (نفس الآلية التي نجحت مع النص)
-            // محرر إكس يقبل لصق الصور؛ حقن input.files لا يعمل لأن إكس لا يربطه إلا بعد ضغط زر الوسائط
+            // أرفق الصور عبر حقل الملفات (الطريقة الموثوقة في إكس)
             const IMGS = ${JSON.stringify(imgs)};
             if (IMGS.length > 0) {
-              for (let i = 0; i < IMGS.length; i++) {
-                try {
-                  const res = await fetch(IMGS[i]);
-                  if (!res.ok) continue;
-                  const blob = await res.blob();
-                  if (!blob || !blob.type || !blob.type.startsWith('image/') || blob.size === 0) continue;
-                  const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
-                  const file = new File([blob], 'image' + (i+1) + '.' + ext, { type: blob.type });
-
-                  // الطريقة 1: لصق الصورة في المحرّر
-                  let ok = false;
+              try {
+                // جهّز كل الملفات دفعة واحدة
+                const dt = new DataTransfer();
+                let prepared = 0;
+                for (let i = 0; i < IMGS.length; i++) {
                   try {
-                    box.focus();
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
-                    box.dispatchEvent(ev);
-                    ok = true;
-                  } catch(e) { ok = false; }
-                  await wait(2500); // امنح إكس وقتاً لرفع الصورة
+                    const res = await fetch(IMGS[i]);
+                    if (!res.ok) continue;
+                    const blob = await res.blob();
+                    if (!blob || !blob.type || !blob.type.startsWith('image/') || blob.size === 0) continue;
+                    const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
+                    dt.items.add(new File([blob], 'image' + (i+1) + '.' + ext, { type: blob.type }));
+                    prepared++;
+                  } catch(e) {}
+                }
 
-                  // الطريقة 2 (احتياط): حقن input الملفات إن وُجد فعلاً
-                  if (!ok) {
-                    const input = document.querySelector('input[type="file"][data-testid="fileInput"], input[type="file"][accept*="image"]');
-                    if (input) {
-                      const dt2 = new DataTransfer();
-                      dt2.items.add(file);
-                      input.files = dt2.files;
+                if (prepared > 0) {
+                  // ابحث عن كل حقول الملفات الممكنة في إكس وجرّبها
+                  const inputs = document.querySelectorAll('input[type="file"]');
+                  let attached = false;
+                  for (const input of inputs) {
+                    try {
+                      // إكس يستخدم حقلاً يقبل الصور
+                      const accept = (input.getAttribute('accept') || '').toLowerCase();
+                      if (accept && !accept.includes('image') && !accept.includes('*')) continue;
+                      input.files = dt.files;
+                      input.dispatchEvent(new Event('input', { bubbles: true }));
                       input.dispatchEvent(new Event('change', { bubbles: true }));
-                      await wait(2500);
-                    }
+                      attached = true;
+                      await wait(3000); // انتظر رفع الصورة لإكس
+                      // تحقق: هل ظهرت معاينة صورة؟
+                      if (document.querySelector('[data-testid="attachments"], [data-testid="tweetPhoto"], img[alt="Image"], [aria-label*="صورة"], [aria-label*="Image"]')) break;
+                    } catch(e) {}
                   }
-                } catch(e) {}
-              }
+
+                  // احتياط أخير: لصق في المحرّر
+                  if (!attached || !document.querySelector('[data-testid="attachments"], [data-testid="tweetPhoto"]')) {
+                    try {
+                      box.focus();
+                      const pev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+                      box.dispatchEvent(pev);
+                      await wait(3000);
+                    } catch(e) {}
+                  }
+                }
+              } catch(e) { /* الصور اختيارية */ }
             }
             return 'OK';
           })()
