@@ -138,7 +138,7 @@ const S={
 
 const REGIONS=[{k:'sa',l:'🇸🇦 السعودية'},{k:'world',l:'🌍 العالم'},{k:'ae',l:'🇦🇪 الإمارات'},{k:'eg',l:'🇪🇬 مصر'}];
 const TONES=[{id:'hype',l:'🔥 إثارة'},{id:'informative',l:'📊 معلوماتي'},{id:'funny',l:'😂 فكاهي'},{id:'urgency',l:'⚡ عاجل'}];
-const STEPS=['الترندات','التغريدة','الحفظ'];
+const STEPS=['الترندات','التغريدة','النشر'];
 const SRCS=[{k:'amazon',l:'📦 أمازون'},{k:'noon',l:'🛍️ نون'},{k:'aliexpress',l:'🌐 علي إكسبريس'}];
 
 const SUPPORT_WHATSAPP = '966559099222';
@@ -1071,7 +1071,6 @@ function renderHdr(){
 
     // أدوات إكس (إنشاء، المخطط، المحفوظة) — تظهر داخل خدمة إكس فقط
     const xTools = isX ? `
-      <button class="btn btn-g btn-sm" onclick="goPage('compose')" style="${S.page==='compose'?'color:#1d9bf0;border-color:#1d9bf0':''}">✏️ إنشاء</button>
       <button class="btn btn-g btn-sm" onclick="goPage('schedule')" style="${S.page==='schedule'?'color:#1d9bf0;border-color:#1d9bf0':''}">📋 المخطط ${DUE_COUNT>0?`<span style="background:#f59e0b;color:#0a0f1a;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700">${DUE_COUNT}</span>`:''}</button>
       <button class="btn btn-g btn-sm" onclick="goPage('saved')" style="${S.page==='saved'?'color:#1d9bf0;border-color:#1d9bf0':''}">💾 المحفوظة ${S.saved.length?`<span style="background:#7c3aed;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">${S.saved.length}</span>`:''}</button>` : '';
 
@@ -1547,7 +1546,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.0.4'; // يُحدّث تلقائياً من main
+let APP_VER = '2.0.6'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
