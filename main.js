@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.0.7';
+const APP_VERSION    = '2.0.8';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -386,15 +386,33 @@ function getXSession() {
 function downloadImageAsDataUrl(url, redirects = 0) {
   return new Promise((resolve) => {
     if (redirects > 3) return resolve(null);
+    // نظّف روابط نون المشوّهة: أزل بادئة الهاش + | (%7C) قبل pzsku
+    try {
+      if (/nooncdn\.com/i.test(url) && /%7C|\|/i.test(url)) {
+        const pIdx = url.search(/%7C|\|/i);
+        if (pIdx >= 0) {
+          const after = url.slice(pIdx).replace(/^(%7C|\|)/i, '');
+          url = 'https://f.nooncdn.com/p/' + after;
+        }
+      }
+    } catch(e) {}
     try {
       const mod = url.startsWith('http://') ? require('http') : https;
-      // مُحيل (Referer) مطابق لنطاق الصورة — يتجاوز حماية ربط الصور في نون/أمازون/علي إكسبريس
+      // مُحيل (Referer) — معظم CDN يفحص أن الطلب من الموقع الرئيسي لا من نطاق الـCDN نفسه
       let referer = '';
-      try { const u = new URL(url); referer = u.origin + '/'; } catch(e) {}
+      try {
+        const u = new URL(url);
+        // نون: الـCDN (nooncdn.com) يطلب مُحيلاً من noon.com نفسه
+        if (/nooncdn\.com/i.test(u.host)) referer = 'https://www.noon.com/';
+        else if (/aliexpress-media\.com|alicdn\.com/i.test(u.host)) referer = 'https://www.aliexpress.com/';
+        else if (/media-amazon\.com|ssl-images-amazon\.com/i.test(u.host)) referer = 'https://www.amazon.sa/';
+        else referer = u.origin + '/';
+      } catch(e) {}
       const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'image/jpeg,image/png,image/webp,image/*;q=0.8,*/*;q=0.5',
+        'Accept': 'image/jpeg,image/png,image/webp,image/avif,image/*;q=0.8,*/*;q=0.5',
         'Accept-Language': 'ar-SA,ar;q=0.9,en;q=0.8',
+        'Origin': referer ? referer.replace(/\/$/, '') : '',
       };
       if (referer) headers['Referer'] = referer;
       const req = mod.get(url, { headers }, (r) => {
