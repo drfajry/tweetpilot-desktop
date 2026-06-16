@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.0.8';
+const APP_VERSION    = '2.0.9';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -514,6 +514,55 @@ function hardenXWindow(win) {
     return { action: 'deny' };
   });
   applyTitle();
+}
+
+// ── التقاط صور نون عبر CDP (لقطة شاشة لعنصر الصورة المعروض) ──
+// نون يحجب تحميل الصور آلياً، لكن <img> يعرضها. نلتقط البكسلات المعروضة فعلاً — لا تحميل، لا CORS.
+async function captureNoonImages(win, products) {
+  if (!win || win.isDestroyed()) return products;
+  const dbg = win.webContents.debugger;
+  let attached = false;
+  try {
+    try { dbg.attach('1.3'); attached = true; } catch(e) { if (/already attached/i.test(String(e))) attached = true; else return products; }
+    await dbg.sendCommand('Page.enable').catch(()=>{});
+
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (!p.image || !p.image.startsWith('http')) continue;
+      try {
+        const rect = await win.webContents.executeJavaScript(`
+          (() => {
+            try {
+              const a = Array.from(document.querySelectorAll('a[href*="/p/"]')).find(x => x.href.split('?')[0] === ${JSON.stringify(p.url)});
+              const img = a ? a.querySelector('img') : null;
+              if (!img) return null;
+              img.scrollIntoView({ block: 'center' });
+              const r = img.getBoundingClientRect();
+              if (r.width < 20 || r.height < 20) return null;
+              return { x: r.x, y: r.y, width: r.width, height: r.height };
+            } catch(e) { return null; }
+          })()
+        `).catch(()=>null);
+        if (!rect) continue;
+        await new Promise(r => setTimeout(r, 350));
+
+        const result = await dbg.sendCommand('Page.captureScreenshot', {
+          format: 'jpeg',
+          quality: 90,
+          clip: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height), scale: 1 },
+          captureBeyondViewport: false,
+        });
+        if (result && result.data) {
+          products[i].image = 'data:image/jpeg;base64,' + result.data;
+        }
+      } catch(e) {}
+    }
+    return products;
+  } catch(e) {
+    return products;
+  } finally {
+    try { if (attached) dbg.detach(); } catch(e) {}
+  }
 }
 
 // ── إرفاق الصور عبر بروتوكول DevTools (CDP) ──
@@ -1634,8 +1683,14 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             if (!alt || /^(logo|image|placeholder|loading)$/i.test(alt)) continue;
             if (/\\/assets\\/|logo|sprite|icon/i.test(src)) continue;
             if (!/nooncdn\\.com\\/p\\//i.test(src)) continue;
+            // إحداثيات الصورة المعروضة (للالتقاط عبر CDP — نون يحجب تحميل الصور)
+            let rect = null;
+            try {
+              const r = img.getBoundingClientRect();
+              if (r && r.width > 20 && r.height > 20) rect = { x: r.x, y: r.y, width: r.width, height: r.height };
+            } catch(e){}
             seen.add(clean);
-            out.push({ url: clean, title: alt.substring(0,80), price:'', image: src });
+            out.push({ url: clean, title: alt.substring(0,80), price:'', image: src, rect });
             if (out.length >= 8) break;
           }
           return out;
@@ -1729,16 +1784,25 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             return;
           }
           clearTimeout(hardTimeout);
-          const clean = products
+          let clean = products
             .filter(p => p.url && !isHomepageOrNav(p.url))
             .map(p => ({
               name: (p.title || '').substring(0, 70),
               price: p.price || '',
               url: p.url,
               image: p.image || '',
+              rect: p.rect || null,
               snippet: '',
               isProduct: true,
             }));
+
+          // نون يحجب تحميل صوره — نلتقطها كصور معروضة عبر CDP (لقطة شاشة لعنصر الصورة)
+          if (source === 'noon') {
+            try {
+              clean = await captureNoonImages(win, clean);
+            } catch(e) {}
+          }
+
           finish({ success: true, products: clean.slice(0, 8), engine: 'store' });
           return;
         }
