@@ -1112,14 +1112,16 @@ function bindConnect(){
 
 // ── الخطوة 0: الترندات ──────────────────────────
 function renderS0(){
-  const cards=S.trends.map((t,i)=>`<div class="tc ${S.selTrends.find(s=>s.name===t.name)?'sel':''}" onclick="toggleTrendIdx(${i})">
-    <div style="display:flex;justify-content:space-between">
+  const cards=S.trends.map((t,i)=>{
+    const isSel=!!S.selTrends.find(s=>s.name===t.name);
+    return `<div class="tc ${isSel?'sel':''}" onclick="toggleTrendIdx(${i})">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
       <span class="tn">${escHtml(t.name)}${t.isHashtag===false?' <span style="font-size:9px;color:#9ca3af;background:#9ca3af22;border-radius:5px;padding:1px 5px">كلمة</span>':''}</span>
-      ${S.selTrends.find(s=>s.name===t.name)?'<span style="width:16px;height:16px;border-radius:50%;background:#1d9bf0;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span>':''}
+      ${isSel?`<button onclick="event.stopPropagation();toggleTrendIdx(${i})" title="إزالة" style="flex:none;width:18px;height:18px;border-radius:50%;background:#1d9bf0;color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;cursor:pointer">✕</button>`:''}
     </div>
     <div class="tv">ترند حالي</div>
-  </div>`).join('');
-  const tags=S.selTrends.map(t=>`<span style="display:inline-block;padding:2px 9px;margin:2px 3px;background:#1d9bf022;border:1px solid #1d9bf044;border-radius:10px;font-size:11px;color:#7ab8f5">${escHtml(t.name)}</span>`).join('');
+  </div>`;}).join('');
+  const tags=S.selTrends.map((t,si)=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 7px 3px 11px;margin:3px;background:#1d9bf022;border:1px solid #1d9bf044;border-radius:12px;font-size:12px;color:#7ab8f5">${escHtml(t.name)}<button onclick="removeSelTrendIdx(${si})" title="إزالة" style="flex:none;width:17px;height:17px;border-radius:50%;background:#1d9bf044;color:#cfe6ff;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;cursor:pointer">✕</button></span>`).join('');
   return `<div class="ptit">الترندات الحالية</div>
   <div class="psub">اختر حتى 3 ترندات لتضمينها في تغريدتك</div>
   <div class="card">
@@ -1136,7 +1138,7 @@ function renderS0(){
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
   ${S.trends.length?`<div class="tg">${cards}</div>`:''}
   ${!S.trends.length&&!S.trendsError?'<div style="color:#6b7280;font-size:13px;text-align:center;padding:20px">اضغط "جلب الترندات" للبدء</div>':''}
-  ${S.selTrends.length?`<div class="card"><div class="ct">✅ الترندات المختارة</div><div>${tags}</div></div>`:''}
+  ${S.selTrends.length?`<div class="card"><div class="ct">✅ الترندات المختارة</div><div>${tags}</div><div style="font-size:11px;color:#6b7280;margin-top:6px">اضغط ✕ على أي ترند لإزالته — حتى لو لم يَعُد ظاهراً في الترندات الحالية.</div></div>`:''}
   <div class="card">
     <div class="ct">🏷️ هاشتاقات إضافية (اختياري)</div>
     <input id="customTags" placeholder="مثال: #عروض #الرياض — اتركه فارغاً للاعتماد على الترندات" value="${S.customTags||''}" style="width:100%" oninput="S.customTags=this.value">
@@ -1445,10 +1447,17 @@ async function fetchTrends(){
 }
 
 function toggleTrend(name){
-  const t=S.trends.find(x=>x.name===name); if(!t) return;
+  // الإزالة ممكنة دائماً — حتى لو لم يَعُد الترند موجوداً في الجلب الحالي (ترند قديم مختفٍ)
   const i=S.selTrends.findIndex(x=>x.name===name);
-  if(i>=0) S.selTrends.splice(i,1);
-  else if(S.selTrends.length<3) S.selTrends.push(t);
+  if(i>=0){ S.selTrends.splice(i,1); render(); return; }
+  // الإضافة فقط لترند موجود فعلاً في القائمة الحالية، وبحد 3
+  const t=S.trends.find(x=>x.name===name);
+  if(t && S.selTrends.length<3) S.selTrends.push(t);
+  render();
+}
+// إزالة ترند مختار بالفهرس — يعمل على أي ترند مختار بما فيها القديم المختفي
+function removeSelTrendIdx(si){
+  if(si>=0 && si<S.selTrends.length) S.selTrends.splice(si,1);
   render();
 }
 
@@ -1549,7 +1558,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.1.1'; // يُحدّث تلقائياً من main
+let APP_VER = '2.1.2'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
