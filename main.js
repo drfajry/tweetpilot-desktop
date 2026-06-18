@@ -21,12 +21,8 @@ const https = require('https');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.1.4';
+const APP_VERSION    = '2.1.6';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -517,77 +513,86 @@ function hardenXWindow(win) {
   applyTitle();
 }
 
-// ── التقاط صور نون عبر CDP (لقطة شاشة لعنصر الصورة المعروض) ──
-// نون يعرض في صفحة البحث صوراً مصغّرة (thumbnail). الأكثر ثباتاً وجودة هو فتح صفحة
-// المنتج نفسها والتقاط الصورة الرئيسية الأصلية منها. لكل منتج: نفتح صفحته، ننتظر ظهور
-// الصورة الرئيسية (complete && naturalWidth>500 && naturalHeight>500)، نصوّرها وحدها، ثم
-// ننتقل. إن تعذّر من صفحة المنتج، نلجأ فقط حينها لخطة بديلة برفع دقة currentSrc.
-async function captureNoonImages(parentWin, products) {
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  // نافذة تصوير مخفية مستقلة ترث جلسة نون (نفس الـ partition) — لا تؤثر على نافذة البحث
-  let capWin = null;
-  try {
-    capWin = new BrowserWindow({ show: false, width: 1280, height: 1000, webPreferences: { partition: 'persist:nashir-shop', offscreen: false } });
-  } catch(e) { return products; }
+// ── التقاط صور نون عبر CDP ──
+// الأولوية: فتح صفحة المنتج والتقاط صورتها الرئيسية الأصلية (complete && naturalWidth>500 && naturalHeight>500).
+// إن تعذّر → خطة بديلة برفع دقة currentSrc. كل عملية محميّة بمهلة صارمة + مهلة كلية، فلا تعلّق العملية أبداً
+// وتصل النتائج للمستخدم في كل الأحوال (بصور أو بصور أصلية مصغّرة عند انتهاء الوقت).
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    Promise.resolve(promise).catch(() => fallback),
+    new Promise((res) => setTimeout(() => res(fallback), ms)),
+  ]);
+}
 
-  const dbg = capWin.webContents.debugger;
+async function captureNoonImages(win, products) {
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  if (!win || win.isDestroyed()) return products;
+
+  // نستخدم نافذة البحث نفسها (الاستخراج اكتمل) لفتح صفحات المنتجات — نتجنّب نافذة ثانية بنفس الجلسة.
+  // نزيل مستمعي البحث حتى لا يُعاد تشغيل الاستخراج عند تنقّلنا بين صفحات المنتجات.
+  try { win.webContents.removeAllListeners('did-finish-load'); } catch(e){}
+  try { win.webContents.removeAllListeners('did-stop-loading'); } catch(e){}
+  try { win.webContents.removeAllListeners('did-fail-load'); } catch(e){}
+
+  const dbg = win.webContents.debugger;
   let attached = false;
   const captureLog = [];
+  const DEADLINE = Date.now() + 80000; // مهلة كلية صارمة: بعدها نُرجع المتبقّي فوراً دون تعليق
 
-  // افتح رابطاً وانتظر اكتمال التحميل (أو مهلة)
   const loadAndWait = (url, timeout) => new Promise((resolve) => {
     let done = false;
     const fin = (ok) => { if (done) return; done = true;
-      try { capWin.webContents.removeListener('did-finish-load', onLoad); } catch(e){}
-      try { capWin.webContents.removeListener('did-fail-load', onFail); } catch(e){}
+      try { win.webContents.removeListener('did-finish-load', onLoad); } catch(e){}
+      try { win.webContents.removeListener('did-fail-load', onFail); } catch(e){}
       resolve(ok); };
     const onLoad = () => fin(true);
     const onFail = (e, code) => { if (code === -3) return; fin(false); };
-    capWin.webContents.on('did-finish-load', onLoad);
-    capWin.webContents.on('did-fail-load', onFail);
+    try { win.webContents.on('did-finish-load', onLoad); } catch(e){}
+    try { win.webContents.on('did-fail-load', onFail); } catch(e){}
     setTimeout(() => fin(false), timeout);
-    try { capWin.loadURL(url); } catch(e) { fin(false); }
+    try { win.loadURL(url); } catch(e) { fin(false); }
   });
 
   try {
-    try { dbg.attach('1.3'); attached = true; } catch(e) { if (/already attached/i.test(String(e))) attached = true; else { try { capWin.destroy(); } catch(e2){} return products; } }
-    await dbg.sendCommand('Page.enable').catch(()=>{});
+    try { dbg.attach('1.3'); attached = true; } catch(e) { if (/already attached/i.test(String(e))) attached = true; else attached = false; }
+    if (attached) await withTimeout(dbg.sendCommand('Page.enable'), 4000, null);
 
     for (let i = 0; i < products.length; i++) {
       const p = products[i];
-      if (!p.url) { products[i].image = ''; continue; }
       const entry = { url: p.url, stage: 'product_page' };
-      try {
-        // (1) افتح صفحة المنتج وانتظر تحميلها
-        const loaded = await loadAndWait(p.url, 22000);
-        await sleep(1600); // استقرار محتوى نون الديناميكي
-        if (!loaded) entry.loaded = false;
+      // انتهى الوقت الكلي → اترك المتبقّي بصوره الأصلية (thumbnail) بدل التعليق
+      if (Date.now() > DEADLINE) { entry.skipped = 'deadline'; captureLog.push(entry); continue; }
+      if (!p.url) { products[i].image = ''; continue; }
 
-        // (2)+(3) انتظر الصورة الرئيسية الأصلية: complete && naturalWidth>500 && naturalHeight>500
-        // نختار أكبر صورة مرئية في الصفحة (الصورة الرئيسية عادة الأكبر) — لا نعتمد على selector هشّ.
-        const prep = await capWin.webContents.executeJavaScript(`
+      try {
+        // (1) افتح صفحة المنتج (مهلة 14s)
+        const loaded = await loadAndWait(p.url, 14000);
+        entry.loaded = loaded;
+        await sleep(1200);
+
+        // (2)+(3) انتظر الصورة الرئيسية الأصلية — محمي بمهلة صارمة 8s
+        const prep = await withTimeout(win.webContents.executeJavaScript(`
           (async () => {
             const sleep = (ms) => new Promise(r => setTimeout(r, ms));
             try {
               let best = null, lastLog = null;
-              for (let t = 0; t < 10; t++) {
+              for (let t = 0; t < 8; t++) {
                 const imgs = Array.from(document.images || []);
                 let cand = null;
                 for (const im of imgs) {
                   if (im.complete !== true) continue;
                   if (!(im.naturalWidth > 500 && im.naturalHeight > 500)) continue;
                   const r = im.getBoundingClientRect();
-                  if (!(r.width > 0 && r.height > 0)) continue; // ظاهر فعلاً
+                  if (!(r.width > 0 && r.height > 0)) continue;
                   if (!cand || im.naturalWidth > cand.naturalWidth) cand = im;
                 }
                 lastLog = cand
                   ? { attempt: t+1, naturalWidth: cand.naturalWidth, naturalHeight: cand.naturalHeight, clientWidth: cand.clientWidth, clientHeight: cand.clientHeight, complete: cand.complete, currentSrc: (cand.currentSrc||'').slice(0,150) }
                   : { attempt: t+1, found: false };
                 if (cand) { best = cand; break; }
-                await sleep(500);
+                await sleep(450);
               }
               if (!best) return { ok:false, reason:'no_main_image', log: lastLog };
-              // (4) جهّز الصورة الرئيسية وحدها للتصوير: ثبّتها أعلى يسار بحجمها الحقيقي (العنصر نفسه، لا حاوية)
               best.scrollIntoView({ block:'center', inline:'center' });
               const box = Math.min(900, Math.max(best.naturalWidth, best.naturalHeight));
               best.dataset.nashirPrev = best.getAttribute('style') || '';
@@ -596,44 +601,43 @@ async function captureNoonImages(parentWin, products) {
               best.style.maxWidth='none'; best.style.maxHeight='none';
               best.style.objectFit='contain'; best.style.background='#fff'; best.style.zIndex='2147483647';
               best.id = '__nashir_main_img__';
-              await sleep(180);
+              await sleep(160);
               return { ok:true, box: box, log: lastLog };
             } catch(e) { return { ok:false, reason:'js_err', log:{ err:String(e).slice(0,120) } }; }
           })()
-        `).catch(e => ({ ok:false, reason:'exec_err', log:{ err:String(e).slice(0,120) } }));
+        `), 9000, { ok:false, reason:'timeout' });
 
-        Object.assign(entry, prep.log || {}, { ok: !!prep.ok, reason: prep.reason });
+        Object.assign(entry, (prep && prep.log) || {}, { ok: !!(prep && prep.ok), reason: prep && prep.reason });
 
-        if (prep && prep.ok && prep.box) {
-          // (5) صوّر الصورة الرئيسية فقط واحفظها
-          const shot = await dbg.sendCommand('Page.captureScreenshot', {
+        if (prep && prep.ok && prep.box && attached) {
+          // (4)+(5) صوّر الصورة الرئيسية فقط واحفظها — مهلة صارمة 8s
+          const shot = await withTimeout(dbg.sendCommand('Page.captureScreenshot', {
             format: 'jpeg', quality: 92,
             clip: { x: 0, y: 0, width: prep.box, height: prep.box, scale: 2 },
             captureBeyondViewport: true,
-          });
-          await capWin.webContents.executeJavaScript(`(()=>{const o=document.getElementById('__nashir_main_img__');if(o){if(o.dataset.nashirPrev!==undefined){o.setAttribute('style',o.dataset.nashirPrev);delete o.dataset.nashirPrev;}o.removeAttribute('id');}return 1;})()`).catch(()=>{});
+          }), 8000, null);
+          await withTimeout(win.webContents.executeJavaScript(`(()=>{const o=document.getElementById('__nashir_main_img__');if(o){if(o.dataset.nashirPrev!==undefined){o.setAttribute('style',o.dataset.nashirPrev);delete o.dataset.nashirPrev;}o.removeAttribute('id');}return 1;})()`), 3000, null);
           if (shot && shot.data && shot.data.length > 2000) {
             products[i].image = 'data:image/jpeg;base64,' + shot.data;
             entry.captured = 'product_page';
-          } else { products[i].image = ''; entry.captured = false; }
+          } else { products[i].image = p.image || ''; entry.captured = false; }
         } else {
           // ── الخطة البديلة (فقط عند تعذّر صفحة المنتج): رفع دقة currentSrc/thumbnail ──
           entry.stage = 'fallback_currentSrc';
-          const fb = await captureFallbackHiRes(capWin, dbg, p.image, sleep);
+          const fb = attached ? await captureFallbackHiRes(win, dbg, p.image, sleep) : { ok:false, log:{} };
           Object.assign(entry, fb.log || {});
           if (fb.ok && fb.data) { products[i].image = fb.data; entry.captured = 'fallback'; }
-          else { products[i].image = ''; entry.captured = false; }
+          else { products[i].image = p.image || ''; entry.captured = false; } // أبقِ الأصلية بدل لا شيء
         }
       } catch(e) {
-        products[i].image = '';
+        products[i].image = p.image || '';
         entry.error = String(e).slice(0, 120);
-        try { await capWin.webContents.executeJavaScript(`(()=>{const o=document.getElementById('__nashir_main_img__');if(o)o.removeAttribute('id');return 1;})()`).catch(()=>{}); } catch(e2){}
+        await withTimeout(win.webContents.executeJavaScript(`(()=>{const o=document.getElementById('__nashir_main_img__');if(o)o.removeAttribute('id');return 1;})()`), 2000, null);
       }
       captureLog.push(entry);
       console.log('[noon-capture]', JSON.stringify(entry));
     }
 
-    // اكتب سجل التشخيص لملف يسهل فتحه ومشاركته
     try {
       const fs = require('fs'); const path = require('path');
       const logPath = path.join(app.getPath('userData'), 'noon-capture-log.json');
@@ -646,14 +650,14 @@ async function captureNoonImages(parentWin, products) {
     return products;
   } finally {
     try { if (attached) dbg.detach(); } catch(e) {}
-    try { if (capWin && !capWin.isDestroyed()) capWin.destroy(); } catch(e) {} // (6) أغلق نافذة التصوير
+    // لا نُدمّر النافذة هنا — المُستدعي (finish) يتولّى ذلك
   }
 }
 
-// خطة بديلة: ارفع دقة الرابط (thumbnail/currentSrc) في نافذة التصوير، وتحقق naturalWidth>300، ثم صوّر.
-async function captureFallbackHiRes(capWin, dbg, srcUrl, sleep) {
+// خطة بديلة: ارفع دقة الرابط (thumbnail/currentSrc)، تحقق naturalWidth>300، ثم صوّر. كل عملية بمهلة صارمة.
+async function captureFallbackHiRes(win, dbg, srcUrl, sleep) {
   if (!srcUrl || !srcUrl.startsWith('http')) return { ok:false, log:{ fbReason:'no_src' } };
-  const prep = await capWin.webContents.executeJavaScript(`
+  const prep = await withTimeout(win.webContents.executeJavaScript(`
     (async () => {
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       try {
@@ -670,7 +674,7 @@ async function captureFallbackHiRes(capWin, dbg, srcUrl, sleep) {
           let d=false; const f=(r)=>{ if(d)return; d=true; res(r); };
           im.onload=()=>f(im.naturalWidth>10?{w:im.naturalWidth,h:im.naturalHeight}:null);
           im.onerror=()=>f(null);
-          im.src=u; setTimeout(()=>f(im.complete&&im.naturalWidth>10?{w:im.naturalWidth,h:im.naturalHeight}:null),6000);
+          im.src=u; setTimeout(()=>f(im.complete&&im.naturalWidth>10?{w:im.naturalWidth,h:im.naturalHeight}:null),5000);
         });
         let chosen='', cw=0, ch=0;
         for (const u of cands) { const r=await measure(u); if(r&&r.w>cw){chosen=u;cw=r.w;ch=r.h;} if(cw>=500)break; }
@@ -680,21 +684,21 @@ async function captureFallbackHiRes(capWin, dbg, srcUrl, sleep) {
         im2.id='__nashir_fb__'; im2.referrerPolicy='no-referrer';
         im2.style.cssText='position:fixed;top:0;left:0;width:'+box+'px;height:'+box+'px;object-fit:contain;background:#fff;z-index:2147483647;';
         document.body.appendChild(im2);
-        const drawn = await new Promise((res)=>{ let d=false; const f=(o)=>{if(d)return;d=true;res(o);}; im2.onload=()=>f(im2.naturalWidth>10); im2.onerror=()=>f(false); im2.src=chosen; setTimeout(()=>f(im2.complete&&im2.naturalWidth>10),6000); });
+        const drawn = await new Promise((res)=>{ let d=false; const f=(o)=>{if(d)return;d=true;res(o);}; im2.onload=()=>f(im2.naturalWidth>10); im2.onerror=()=>f(false); im2.src=chosen; setTimeout(()=>f(im2.complete&&im2.naturalWidth>10),5000); });
         if (!drawn) { im2.remove(); return { ok:false, log:{ fbReason:'draw_failed' } }; }
-        await sleep(150);
+        await sleep(140);
         return { ok:true, box: box, log:{ fbWidth:cw, fbHeight:ch } };
       } catch(e) { return { ok:false, log:{ fbReason:'js_err', err:String(e).slice(0,100) } }; }
     })()
-  `).catch(e => ({ ok:false, log:{ fbReason:'exec_err' } }));
+  `), 9000, { ok:false, log:{ fbReason:'timeout' } });
 
   if (!prep || !prep.ok) { return { ok:false, log: (prep && prep.log) || {} }; }
-  const shot = await dbg.sendCommand('Page.captureScreenshot', {
+  const shot = await withTimeout(dbg.sendCommand('Page.captureScreenshot', {
     format: 'jpeg', quality: 92,
     clip: { x: 0, y: 0, width: prep.box, height: prep.box, scale: 2 },
     captureBeyondViewport: true,
-  }).catch(()=>null);
-  await capWin.webContents.executeJavaScript(`(()=>{const o=document.getElementById('__nashir_fb__');if(o)o.remove();return 1;})()`).catch(()=>{});
+  }), 8000, null);
+  await withTimeout(win.webContents.executeJavaScript(`(()=>{const o=document.getElementById('__nashir_fb__');if(o)o.remove();return 1;})()`), 2000, null);
   if (shot && shot.data && shot.data.length > 2000) return { ok:true, data:'data:image/jpeg;base64,'+shot.data, log: prep.log };
   return { ok:false, log: prep.log };
 }
@@ -1415,13 +1419,12 @@ ipcMain.handle('download-update', async () => {
 ipcMain.handle('install-update', () => {
   if (!autoUpdater) return;
   try {
-    // ارفع علم التثبيت أولاً: يمنع window-all-closed من استدعاء app.quit المبكر
-    // (تدمير النوافذ يدوياً كان يُطلق app.quit قبل quitAndInstall فيُغلق البرنامج دون إعادة تشغيل).
+    // ارفع علم التثبيت: يمنع window-all-closed و before-quit من إنهاء العملية قبل أن يكمل المثبّت.
     isInstallingUpdate = true;
-    // لا نُغلق النوافذ يدوياً — quitAndInstall يتولّى إغلاقها ثم تشغيل النسخة الجديدة.
-    // isSilent=false (يُظهر تقدّم المثبّت) · isForceRunAfter=true (يعيد التشغيل بعد التثبيت).
+    // حاسم: isForceRunAfter (إعادة التشغيل) يُتجاهَل في electron-updater إذا كان isSilent=false.
+    // لذلك نستخدم quitAndInstall(true, true): تثبيت صامت + إعادة تشغيل فعلية بعد الانتهاء.
     setImmediate(() => {
-      try { autoUpdater.quitAndInstall(false, true); }
+      try { autoUpdater.quitAndInstall(true, true); }
       catch(e) { isInstallingUpdate = false; }
     });
   } catch(e) { isInstallingUpdate = false; }
@@ -2081,6 +2084,7 @@ app.on('window-all-closed', () => {
 
 // عند الإغلاق: أغلق كل النوافذ الفرعية (نافذة إكس) حتى لا تبقى يتيمة
 app.on('before-quit', () => {
+  if (isInstallingUpdate) return; // أثناء التثبيت: دع quitAndInstall يدير الإغلاق وإعادة التشغيل
   try {
     BrowserWindow.getAllWindows().forEach(w => { try { if (!w.isDestroyed()) w.destroy(); } catch(e){} });
   } catch(e) {}
