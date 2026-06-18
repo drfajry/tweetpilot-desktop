@@ -21,12 +21,8 @@ const https = require('https');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.2.1';
+const APP_VERSION    = '2.2.2';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -61,15 +57,21 @@ try {
 function setupAutoUpdater() {
   if (!autoUpdater) return;
 
+  // سجّل كل خطوات الفحص لمعرفة أي نسخة يراها electron-updater على GitHub
+  try { autoUpdater.on('checking-for-update', () => console.log('[updater] checking... installed:', APP_VERSION)); } catch(e){}
+
   autoUpdater.on('update-available', (info) => {
+    console.log('[updater] UPDATE AVAILABLE on GitHub:', info && info.version, '| installed:', APP_VERSION);
     mainWindow?.webContents.send('update-available', {
       current: APP_VERSION,
       latest: info.version,
     });
   });
 
-  autoUpdater.on('update-not-available', () => {
-    mainWindow?.webContents.send('update-not-available', { version: APP_VERSION });
+  autoUpdater.on('update-not-available', (info) => {
+    // info.version = أحدث نسخة وجدها على GitHub (من latest.yml). قارنها بالمثبّتة لتشخيص السبب.
+    console.log('[updater] NOT AVAILABLE. latest on GitHub (latest.yml):', info && info.version, '| installed:', APP_VERSION);
+    mainWindow?.webContents.send('update-not-available', { version: APP_VERSION, serverLatest: info && info.version });
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -80,10 +82,13 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', () => {
+    console.log('[updater] update downloaded — ready to install');
     mainWindow?.webContents.send('update-downloaded', {});
   });
 
   autoUpdater.on('error', (err) => {
+    // خطأ شائع: 404 على latest.yml (لم يُرفع مع الـ Release) أو الـ Release غير منشور (draft)
+    console.log('[updater] ERROR:', err && err.message);
     mainWindow?.webContents.send('update-error', { error: err.message });
   });
 }
@@ -91,8 +96,13 @@ function setupAutoUpdater() {
 async function checkForUpdates(silent = false) {
   if (!autoUpdater) return;
   try {
-    await autoUpdater.checkForUpdates();
+    let feed = '';
+    try { feed = JSON.stringify(autoUpdater.getFeedURL && autoUpdater.getFeedURL() || autoUpdater.updateConfigPath || ''); } catch(e){}
+    console.log('[updater] checkForUpdates start | installed:', APP_VERSION, '| feed:', feed);
+    const r = await autoUpdater.checkForUpdates();
+    console.log('[updater] checkForUpdates result:', r && r.updateInfo ? ('server version ' + r.updateInfo.version) : 'no info');
   } catch(e) {
+    console.log('[updater] checkForUpdates threw:', e && e.message);
     if (!silent) mainWindow?.webContents.send('update-error', { error: e.message });
   }
 }
