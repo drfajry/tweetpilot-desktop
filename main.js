@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.3.1';
+const APP_VERSION    = '2.3.2';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -430,28 +430,31 @@ function downloadImageAsDataUrl(url, redirects = 0) {
         'Origin': referer ? referer.replace(/\/$/, '') : '',
       };
       if (referer) headers['Referer'] = referer;
+      console.log('[IMG_FETCH_START]', url.slice(0, 120));
       const req = mod.get(url, { headers }, (r) => {
+        console.log('[IMG_FETCH_STATUS]', r.statusCode, r.headers['content-type'] || '(no type)');
         if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) {
           r.resume();
+          console.log('[IMG_FETCH_REDIRECT]', (r.headers.location || '').slice(0, 100));
           return resolve(downloadImageAsDataUrl(r.headers.location, redirects + 1));
         }
-        if (r.statusCode < 200 || r.statusCode >= 300) { r.resume(); return resolve(null); }
+        if (r.statusCode < 200 || r.statusCode >= 300) { r.resume(); console.log('[IMG_FETCH_REJECT] bad status', r.statusCode); return resolve(null); }
         const chunks = [];
         r.on('data', c => chunks.push(c));
         r.on('end', () => {
           const buf = Buffer.concat(chunks);
-          if (buf.length === 0 || buf.length > 5 * 1024 * 1024) return resolve(null);
+          console.log('[IMG_FETCH_SIZE]', buf.length);
+          if (buf.length === 0 || buf.length > 5 * 1024 * 1024) { console.log('[IMG_FETCH_REJECT] size out of range', buf.length); return resolve(null); }
           const type = r.headers['content-type'] || 'image/jpeg';
-          // تأكد أنها صورة فعلاً (لا صفحة خطأ HTML)
-          if (!/image\//i.test(type)) return resolve(null);
-          // إكس لا يقبل AVIF/WEBP — ارفضها هنا ليتحوّلها مسار المتصفح (canvas → PNG)
-          if (/avif|webp/i.test(type)) return resolve(null);
+          if (!/image\//i.test(type)) { console.log('[IMG_FETCH_REJECT] not an image:', type); return resolve(null); }
+          if (/avif|webp/i.test(type)) { console.log('[IMG_FETCH_REJECT] avif/webp (X unsupported) → will try browser:', type); return resolve(null); }
+          console.log('[IMG_BUFFER_SIZE]', buf.length, '| type', type);
           resolve(`data:${type};base64,${buf.toString('base64')}`);
         });
       });
-      req.on('error', () => resolve(null));
-      req.setTimeout(15000, () => { req.destroy(); resolve(null); });
-    } catch(e) { resolve(null); }
+      req.on('error', (e) => { console.error('[IMG_FETCH_ERROR]', String(e && e.message || e).slice(0, 150)); resolve(null); });
+      req.setTimeout(15000, () => { req.destroy(); console.error('[IMG_FETCH_ERROR] timeout 15s'); resolve(null); });
+    } catch(e) { console.error('[IMG_FETCH_ERROR] exception', String(e).slice(0,150)); resolve(null); }
   });
 }
 
@@ -978,15 +981,24 @@ async function openComposeWindow(content, images = []) {
       if (/nooncdn\.com/i.test(httpSrc)) {
         httpSrc = httpSrc.replace(/\/(\d{2,3})\/_?\//, '/1200/_/');
       }
+      console.log('[IMG_PATH] node fetch (hi-res):', httpSrc.slice(0, 100));
       let d = await downloadImageAsDataUrl(httpSrc);
-      if (!d) d = await fetchImageViaBrowser(httpSrc);
+      console.log('[IMG_PATH] node fetch result:', d ? 'OK data:image' : 'FAILED');
+      if (!d) {
+        console.log('[IMG_PATH] node fetch failed → trying browser session (same cookies/UA)');
+        d = await fetchImageViaBrowser(httpSrc);
+        console.log('[IMG_PATH] browser session result:', d ? 'OK' : 'FAILED');
+      }
       if ((!d || !d.startsWith('data:image')) && httpSrc !== src) {
+        console.log('[IMG_PATH] retry with original url:', src.slice(0, 100));
         d = await downloadImageAsDataUrl(src);
-        if (!d) d = await fetchImageViaBrowser(src);
+        if (!d) { console.log('[IMG_PATH] original via browser session'); d = await fetchImageViaBrowser(src); }
       }
       if (d && d.startsWith('data:image')) {
         const m = d.match(/^data:image\/([a-z0-9+]+);base64,(.+)$/i);
-        if (m) buf = Buffer.from(m[2], 'base64');
+        if (m) { buf = Buffer.from(m[2], 'base64'); console.log('[IMG_BUFFER_SIZE]', buf.length); }
+      } else {
+        console.log('[IMG_PATH] ALL methods failed for this url');
       }
     }
     if (!buf || buf.length === 0) { console.log('[x-image] no buffer for', srcType, '— skipping'); continue; }
@@ -2329,15 +2341,21 @@ app.whenReady().then(() => {
     const dbgFile = path.join(app.getPath('desktop'), 'nashir-debug.txt');
     try { require('fs').writeFileSync(dbgFile, '=== ناشر debug ' + new Date().toISOString() + ' v' + APP_VERSION + ' ===\n'); } catch(e){}
     const origLog = console.log.bind(console);
-    console.log = (...args) => {
-      origLog(...args);
+    const writeDbg = (line) => {
       try {
-        const line = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-        // نكتب فقط أسطر تشخيص ناشر المهمّة (تبدأ بوسم بين قوسين مربّعين)
-        if (/^\[(PRE_PUBLISH_IMAGE|x-image|x-upload|noon-capture|capture|NOON_SAVED|NOON_FINAL|NOON_RETURN|updater)\]/.test(line)) {
+        if (/^\[(PRE_PUBLISH_IMAGE|x-image|x-upload|noon-capture|capture|NOON_SAVED|NOON_FINAL|NOON_RETURN|IMG_[A-Z_]+|updater)\]/.test(line)) {
           require('fs').appendFileSync(dbgFile, line + '\n');
         }
       } catch(e) {}
+    };
+    console.log = (...args) => {
+      origLog(...args);
+      try { writeDbg(args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')); } catch(e) {}
+    };
+    const origErr = console.error.bind(console);
+    console.error = (...args) => {
+      origErr(...args);
+      try { writeDbg(args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')); } catch(e) {}
     };
   } catch(e) {}
 
