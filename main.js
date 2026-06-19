@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.3.3';
+const APP_VERSION    = '2.3.4';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -455,7 +455,7 @@ async function downloadImageAsDataUrl(url, redirects = 0) {
     if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) { console.log('[IMG_FETCH_FAILED] size', buffer.length); return null; }
     const type = (resp.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
     if (!/image\//i.test(type)) { console.log('[IMG_FETCH_FAILED] not-image', type); return null; }
-    if (/avif|webp/i.test(type)) { console.log('[IMG_FETCH_FAILED] avif/webp (X unsupported) -> browser path', type); return null; }
+    // AVIF/WEBP مقبولة الآن — ستُحوّل لـ JPEG في مرحلة التطبيع قبل الرفع
     return `data:${type};base64,${buffer.toString('base64')}`;
   } catch (err) {
     console.error('[IMG_FETCH_EXCEPTION]', String(err && err.message || err).slice(0, 180));
@@ -464,7 +464,66 @@ async function downloadImageAsDataUrl(url, redirects = 0) {
 }
 
 
-// جلب الصورة وتحويلها لصيغة PNG عبر canvas (يفك AVIF/WEBP ويخرج صيغة يقبلها إكس)
+// يحوّل أي buffer صورة (بما فيها AVIF/WEBP التي لا يقبلها إكس) إلى JPEG.
+// أولاً nativeImage (سريع)، فإن فشل (مثل AVIF) يفكّها عبر canvas في نافذة Chromium مخفية.
+async function decodeToJpeg(buffer, mime) {
+  // (1) nativeImage — يكفي لـ JPEG/PNG وأحياناً WEBP
+  try {
+    const { nativeImage } = require('electron');
+    const ni = nativeImage.createFromBuffer(buffer);
+    if (ni && !ni.isEmpty()) {
+      let out = ni;
+      const sz = ni.getSize();
+      if (sz.width > 1600 || sz.height > 1600) out = ni.resize({ width: Math.min(1600, sz.width || 1600), quality: 'best' });
+      const jpg = out.toJPEG(92);
+      if (jpg && jpg.length > 1500) { console.log('[IMG_CONVERT] via nativeImage ->', jpg.length); return jpg; }
+    }
+  } catch(e) {}
+  // (2) canvas في Chromium — يفك AVIF/WEBP أصلاً (data: URL لا يلوّث canvas)
+  return await new Promise((resolve) => {
+    let win = null, done = false;
+    const fin = (v) => { if (done) return; done = true; try { if (win && !win.isDestroyed()) win.destroy(); } catch(e){} resolve(v); };
+    try {
+      const dataUrl = `data:${mime || 'image/avif'};base64,${buffer.toString('base64')}`;
+      win = new BrowserWindow({ show: false, width: 1700, height: 1700, webPreferences: { partition: 'persist:nashir-shop' } });
+      setTimeout(() => fin(null), 15000);
+      win.webContents.once('dom-ready', async () => {
+        try {
+          const out = await win.webContents.executeJavaScript(`
+            (async () => {
+              try {
+                const img = new Image();
+                const ok = await new Promise((res) => {
+                  img.onload = () => res(true);
+                  img.onerror = () => res(false);
+                  img.src = ${JSON.stringify(dataUrl)};
+                  setTimeout(() => res(img.complete && img.naturalWidth > 0), 9000);
+                });
+                if (!ok || !img.naturalWidth) return null;
+                let w = img.naturalWidth, h = img.naturalHeight;
+                const MAX = 1600;
+                if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                return c.toDataURL('image/jpeg', 0.92); // data: URL لا يُلوّث canvas
+              } catch(e) { return null; }
+            })()
+          `);
+          if (out && out.startsWith('data:image/jpeg')) {
+            const b = Buffer.from(out.split(',')[1], 'base64');
+            console.log('[IMG_CONVERT] via canvas ->', b.length);
+            fin(b.length > 1500 ? b : null);
+          } else { console.log('[IMG_CONVERT] canvas failed'); fin(null); }
+        } catch(e) { console.log('[IMG_CONVERT] exception', String(e).slice(0,80)); fin(null); }
+      });
+      win.loadURL('data:text/html;charset=utf-8,<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0"></body></html>');
+    } catch(e) { fin(null); }
+  });
+}
+
+
+// جلب الصورة عبر نافذة المتصفح والتقاطها (يتجاوز حجب fetch وقيد CORS)
 function fetchImageViaBrowser(url) {
   return new Promise((resolve) => {
     let win = null;
@@ -959,7 +1018,7 @@ async function openComposeWindow(content, images = []) {
     // (1) نوع الصورة + المصدر
     const srcType = src.startsWith('file://') ? 'LocalFile' : src.startsWith('data:image') ? 'Base64' : src.startsWith('http') ? 'URL' : (src.startsWith('blob:') ? 'Blob' : 'Unknown');
     console.log('[x-image] processing', JSON.stringify({ type: srcType, source: src.slice(0, 90) }));
-    let buf = null;
+    let buf = null; let bufMime = 'image/jpeg';
     if (src.startsWith('file://')) {
       // (3) ملف محلي — اطبع المسار/الوجود/الحجم/النوع، واقرأه مباشرة (لا fetch ولا إعادة تحميل)
       try {
@@ -975,6 +1034,7 @@ async function openComposeWindow(content, images = []) {
       if (!m) continue;
       // (2) Base64 — اطبع طول البيانات
       console.log('[x-image] base64', JSON.stringify({ dataLength: m[2].length, ext: m[1] }));
+      bufMime = 'image/' + m[1];
       buf = Buffer.from(m[2], 'base64');
     } else if (src.startsWith('http')) {
       let httpSrc = src;
@@ -1001,7 +1061,7 @@ async function openComposeWindow(content, images = []) {
       }
       if (d && d.startsWith('data:image')) {
         const m = d.match(/^data:image\/([a-z0-9+]+);base64,(.+)$/i);
-        if (m) { buf = Buffer.from(m[2], 'base64'); console.log('[IMG_BUFFER_SIZE]', buf.length); }
+        if (m) { buf = Buffer.from(m[2], 'base64'); bufMime = 'image/' + m[1]; console.log('[IMG_BUFFER_SIZE]', buf.length, '| mime', bufMime); }
       } else {
         console.log('[IMG_PATH] ALL methods failed for this url');
       }
@@ -1022,6 +1082,11 @@ async function openComposeWindow(content, images = []) {
           }
           const jpeg = ni.toJPEG(90);
           if (jpeg && jpeg.length > 1200) buf = jpeg;
+        } else {
+          // nativeImage لم يفهم الصيغة (AVIF غالباً) → حوّلها عبر canvas في Chromium
+          const jpg = await decodeToJpeg(buf, bufMime);
+          if (jpg && jpg.length > 1500) buf = jpg;
+          else console.log('[IMG_CONVERT] keep original (convert empty), mime=', bufMime);
         }
       } catch(e) {}
       if (buf.length > 6 * 1024 * 1024) continue;
