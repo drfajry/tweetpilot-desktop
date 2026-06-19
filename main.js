@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.3.0';
+const APP_VERSION    = '2.3.1';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -2053,6 +2053,47 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
         (() => {
           const out = [];
           const seen = new Set();
+          // أفضل رابط nooncdn من عنصر img: currentSrc/src/data-*/srcset، ثم أي img داخل البطاقة
+          const pickImg = (img, scope) => {
+            const cands = [];
+            if (img) {
+              if (img.currentSrc) cands.push(img.currentSrc);
+              if (img.src) cands.push(img.src);
+              for (const at of ['data-src','data-original','data-lazy-src','data-image']) { const v = img.getAttribute && img.getAttribute(at); if (v) cands.push(v); }
+              for (const ss of [img.srcset, (img.getAttribute && img.getAttribute('data-srcset'))]) {
+                if (ss) for (const part of ss.split(',')) { const u = part.trim().split(/\\s+/)[0]; if (u) cands.push(u); }
+              }
+            }
+            if (scope) {
+              try {
+                for (const im of scope.querySelectorAll('img')) {
+                  if (im.currentSrc) cands.push(im.currentSrc);
+                  if (im.src) cands.push(im.src);
+                  if (im.srcset) for (const part of im.srcset.split(',')) { const u = part.trim().split(/\\s+/)[0]; if (u) cands.push(u); }
+                }
+                const m = (scope.innerHTML || '').match(/https?:\\/\\/[^"'\\s)]*nooncdn\\.com\\/p\\/[^"'\\s)]+/i);
+                if (m) cands.push(m[0]);
+              } catch(e){}
+            }
+            for (const c of cands) { if (/nooncdn\\.com\\/p\\//i.test(c) && !/placeholder|\\.svg/i.test(c)) return c; }
+            for (const c of cands) { if (/nooncdn\\.com/i.test(c) && !/placeholder|\\.svg/i.test(c)) return c; }
+            return '';
+          };
+          // احتياط على مستوى الصفحة: og:image / twitter:image / JSON-LD
+          const pageImg = (() => {
+            try {
+              for (const sel of ['meta[property="og:image"]','meta[name="twitter:image"]','meta[property="twitter:image"]']) {
+                const mt = document.querySelector(sel);
+                if (mt && mt.content && /nooncdn/i.test(mt.content) && !/placeholder|\\.svg/i.test(mt.content)) return mt.content;
+              }
+              for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+                const mm = (s.textContent || '').match(/https?:\\/\\/[^"'\\s)]*nooncdn\\.com\\/p\\/[^"'\\s)]+/i);
+                if (mm) return mm[0];
+              }
+            } catch(e){}
+            return '';
+          })();
+
           const links = document.querySelectorAll('a[href*="/p/"]');
           for (const a of links) {
             const href = a.href || '';
@@ -2060,29 +2101,22 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
             const clean = href.split('?')[0];
             if (seen.has(clean)) continue;
             const img = a.querySelector('img');
-            if (!img) continue;
-            const src = img.src||'';
-            if (/\\/assets\\/|logo|sprite|icon/i.test(src)) continue;
-            if (!/nooncdn\\.com\\/p\\//i.test(src)) continue;
-            // العنوان: جرّب alt الصورة، ثم نصاً وصفياً داخل بطاقة المنتج — لا نُسقط المنتج إن غاب alt
-            let title = (img.alt||'').trim();
+            const card = a.closest('div[class*="productContainer"], div[class*="grid_"], li, article') || a.parentElement || a;
+            // أول رابط صالح بالترتيب، ولا نُسقط المنتج إن لم نجد
+            let image = pickImg(img, card) || pageImg || (img && img.src) || '';
+            if (/\\/assets\\/|logo|sprite|icon/i.test(image)) image = pageImg || '';
+            // العنوان
+            let title = ((img && img.alt) || '').trim();
             if (!title || /^(logo|image|placeholder|loading)$/i.test(title)) {
               try {
-                const card = a.closest('div[class*="productContainer"], div[class*="grid_"], li, article') || a.parentElement || a;
                 const t = card.querySelector('[title]:not(img), [class*="name"], [class*="Name"], [class*="title"], [class*="Title"], [data-qa*="name"]');
                 if (t) title = ((t.getAttribute && t.getAttribute('title')) || t.textContent || '').trim();
                 if (!title) title = (a.getAttribute('title') || a.textContent || '').trim();
               } catch(e){}
             }
             title = (title || '').replace(/\\s+/g,' ').trim().substring(0,90);
-            // إحداثيات الصورة المعروضة (للالتقاط عبر CDP — نون يحجب تحميل الصور)
-            let rect = null;
-            try {
-              const r = img.getBoundingClientRect();
-              if (r && r.width > 20 && r.height > 20) rect = { x: r.x, y: r.y, width: r.width, height: r.height };
-            } catch(e){}
             seen.add(clean);
-            out.push({ url: clean, title: title, price:'', image: src, rect });
+            out.push({ url: clean, title: title, price:'', image: image, rect: null });
             if (out.length >= 8) break;
           }
           return out;
@@ -2188,12 +2222,8 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
               isProduct: true,
             }));
 
-          // نون يحجب تحميل صوره — نلتقطها كصور معروضة عبر CDP (لقطة شاشة لعنصر الصورة)
-          if (source === 'noon') {
-            try {
-              clean = await captureNoonImages(win, clean);
-            } catch(e) {}
-          }
+          // (أُلغي التقاط صفحة المنتج عبر CDP — كان بطيئاً وغير موثوق) نكتفي برابط الصورة المستخرج.
+          // معالجة رفع صورة نون في إكس تبقى في مرحلة النشر دون تغيير هنا.
 
           finish({ success: true, products: clean.slice(0, 8), engine: 'store' });
           return;
