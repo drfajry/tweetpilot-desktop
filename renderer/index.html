@@ -1184,6 +1184,18 @@ function renderS1(){
       <button class="btn btn-p" id="btnN1" ${cc===0||overLimit?'disabled':''}>التالي ← حفظ ونسخ</button>
     </div>
   </div>
+  <div class="card">
+    <div class="ct">🖼️ صور أو فيديو (اختياري)</div>
+    ${S.prodImages.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      ${S.prodImages.map((img,i)=>`<div style="position:relative">
+        ${(img||'').startsWith('data:video') ? `<video src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #1a2540" muted></video>` : `<img src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #1a2540">`}
+        <button onclick="S.prodImages.splice(${i},1);render()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
+      </div>`).join('')}
+    </div>` : ''}
+    <label style="font-size:12px;color:#6b7280">${S.prodImages.length === 0 ? 'ارفع حتى 4 صور — أو فيديو واحد — من جهازك' : (S.prodImages.some(x=>(x||'').startsWith('data:video')) ? 'الفيديو يُرفع وحده (لا يُخلط مع صور)' : 'إضافة المزيد (حتى 4 صور)')}</label>
+    <input type="file" id="freeMedia" accept="image/*,video/*" multiple ${(S.prodImages.length >= 4 || S.prodImages.some(x=>(x||'').startsWith('data:video'))) ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px;display:block">
+    ${S.prodImages.length ? `<button class="btn btn-g" style="width:auto;padding:7px 14px;font-size:12px;color:#ff6b6b;margin-top:10px" onclick="S.prodImages=[];render()">🗑️ مسح الوسائط</button>` : ''}
+  </div>
   ` : ''}
 
   ${M==='marketing'?`<div class="card">
@@ -1328,6 +1340,29 @@ function bindS1(){
       };
       reader.readAsDataURL(file);
     });
+  });
+  document.getElementById('freeMedia')?.addEventListener('change', (e)=>{
+    S.tweet = document.getElementById('freeTweet')?.value || S.tweet; // احفظ النص قبل render
+    const files = Array.from(e.target.files || []);
+    for(const file of files){
+      const isVideo = (file.type||'').startsWith('video');
+      if(isVideo){
+        // إكس يقبل فيديو واحداً فقط ولا يُخلط مع صور
+        if(S.prodImages.length){ alert('لا يمكن خلط الفيديو مع الصور. امسح الوسائط أولاً لرفع فيديو.'); break; }
+        if(file.size > 200*1024*1024){ alert('حجم الفيديو كبير جداً (الحد ~200 ميجابايت).'); break; }
+        const reader = new FileReader();
+        reader.onload = (ev)=>{ S.prodImages = [ev.target.result]; render(); };
+        reader.readAsDataURL(file);
+        break; // فيديو واحد فقط
+      } else {
+        if(S.prodImages.some(x=>(x||'').startsWith('data:video'))){ alert('لا يمكن إضافة صور مع فيديو.'); break; }
+        if(S.prodImages.length >= 4){ alert('الحد الأقصى 4 صور.'); break; }
+        const reader = new FileReader();
+        reader.onload = (ev)=>{ if(S.prodImages.length < 4){ S.prodImages.push(ev.target.result); render(); } };
+        reader.readAsDataURL(file);
+      }
+    }
+    e.target.value = ''; // اسمح بإعادة اختيار نفس الملف
   });
 }
 
@@ -1560,7 +1595,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.3.7'; // يُحدّث تلقائياً من main
+let APP_VER = '2.3.8'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
