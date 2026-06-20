@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('api', {
   setSettings:      (data)   => ipcRenderer.invoke('set-settings', data),
   onUpdateAvailable:(cb)     => ipcRenderer.on('update-available',     (_, d) => cb(d)),
   onUpdateNotAvail: (cb)     => ipcRenderer.on('update-not-available', (_, d) => cb(d)),
+  onUpdatesEnded:   (cb)     => ipcRenderer.on('updates-ended',        (_, d) => cb(d)),
   onUpdateProgress: (cb)     => ipcRenderer.on('update-progress',      (_, d) => cb(d)),
   onUpdateDownloaded:(cb)    => ipcRenderer.on('update-downloaded',    (_, d) => cb(d)),
   onUpdateError:    (cb)     => ipcRenderer.on('update-error',         (_, d) => cb(d)),
