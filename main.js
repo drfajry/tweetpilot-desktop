@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.3.6';
+const APP_VERSION    = '2.3.7';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -2599,28 +2599,8 @@ ipcMain.handle('fetch-product-image', async (_, url) => {
 
 
 app.whenReady().then(() => {
-  // ── كتابة أسطر التشخيص في ملف على سطح المكتب لتسهيل إرسالها ──
-  try {
-    const dbgFile = path.join(app.getPath('desktop'), 'nashir-debug.txt');
-    try { require('fs').writeFileSync(dbgFile, '=== ناشر debug ' + new Date().toISOString() + ' v' + APP_VERSION + ' ===\n'); } catch(e){}
-    const origLog = console.log.bind(console);
-    const writeDbg = (line) => {
-      try {
-        if (/^\[(PRE_PUBLISH_IMAGE|x-image|x-upload|noon-capture|capture|NOON_SAVED|NOON_FINAL|NOON_RETURN|IMG_[A-Z_]+|SEARCH|updater)\]/.test(line)) {
-          require('fs').appendFileSync(dbgFile, line + '\n');
-        }
-      } catch(e) {}
-    };
-    console.log = (...args) => {
-      origLog(...args);
-      try { writeDbg(args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')); } catch(e) {}
-    };
-    const origErr = console.error.bind(console);
-    console.error = (...args) => {
-      origErr(...args);
-      try { writeDbg(args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')); } catch(e) {}
-    };
-  } catch(e) {}
+  // (أُزيل ملف التشخيص nashir-debug.txt من سطح المكتب بعد حل المشكلة)
+  // التشخيص يبقى متاحاً في DevTools (console.log) عند التطوير دون إزعاج المستخدم بملف.
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
