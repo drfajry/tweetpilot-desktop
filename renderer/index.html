@@ -212,6 +212,8 @@ async function init(){
   }
   // استقبال إشعار التحديث
   window.api.onUpdateAvailable(data => { S.updateAvailable=data; showUpdateBanner(data); });
+  // انتهاء فترة التحديثات (مدى الحياة بعد سنة): البرنامج يعمل، نخزّن الحالة لعرضها في الإعدادات
+  window.api.onUpdatesEnded(info => { window.__updatesEnded = info || {}; });
   loadSaved();
   render();
 }
@@ -1558,7 +1560,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.3.5'; // يُحدّث تلقائياً من main
+let APP_VER = '2.3.6'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1683,6 +1685,7 @@ window.manualUpdateCheck = async () => {
     window.api.onUpdateAvailable(d => { if(window.__updPending){ window.__updPending(); window.__updPending=null; } });
     window.api.onUpdateNotAvail(() => { if(window.__updDone){ window.__updDone(`✅ أنت على أحدث نسخة (v${APP_VER})`,'#00c896'); } });
     window.api.onUpdateError(d => { if(window.__updDone){ window.__updDone('⚠️ تعذر التحقق: ' + (d.error||''), '#f59e0b'); } });
+    window.api.onUpdatesEnded(d => { if(window.__updDone){ window.__updDone('🔒 انتهت فترة التحديثات المجانية (سنة). البرنامج يعمل بكامل وظائفه.', '#a78bfa'); } });
   }
   window.__updPending = () => done('🆕 يوجد إصدار جديد — سيظهر شريط التحديث بالأعلى', '#00c896');
   window.__updDone = (m,c) => { if(!answered) done(m,c); };
