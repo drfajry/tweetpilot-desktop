@@ -26,7 +26,7 @@ const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // �
 const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
 const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.3.9';
+const APP_VERSION    = '2.4.0';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -1971,7 +1971,8 @@ ipcMain.handle('fetch-trends', async (_, { region, platform }) => {
   }
   if (platform === 'google') {
     try {
-      const res = await fetch(`${TRENDS_SERVER}/api/trends/tiktok`); // السيرفر يخزنها تحت tiktok (Google Trends)
+      const reg = (region || 'sa').toLowerCase();
+      const res = await fetch(`${TRENDS_SERVER}/api/trends/tiktok?region=${reg}`); // ترندات حسب المنطقة
       const data = await res.json();
       if (data.trends && data.trends.length > 0) {
         return { success: true, trends: data.trends, updatedAt: data.updatedAt };
