@@ -1127,14 +1127,14 @@ function renderS0(){
   return `<div class="ptit">الترندات الحالية</div>
   <div class="psub">اختر حتى 3 ترندات لتضمينها في تغريدتك</div>
   <div class="card">
-    <div class="ct">🌍 المنطقة</div>
-    <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
+    ${S.platform!=='google'?`<div class="ct">🌍 المنطقة</div>
+    <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>`:''}
     <div class="ct" style="margin-bottom:8px">📱 المنصة</div>
     <div class="tabs">
       <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 إكس</button>
       <button class="tab ${S.platform==='google'?'active':''}" onclick="S.platform='google';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🔥 ترند قوقل</button>
     </div>
-    ${S.platform==='google'?`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات قوقل اللحظية حسب المنطقة المختارة — صالحة للنشر على كل المنصات</div>`:''}
+    ${S.platform==='google'?`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات قوقل عالمية لحظية (لا تعتمد على المنطقة) — صالحة للنشر على كل المنصات</div>`:''}
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
@@ -1143,7 +1143,7 @@ function renderS0(){
   ${S.selTrends.length?`<div class="card"><div class="ct">✅ الترندات المختارة</div><div>${tags}</div><div style="font-size:11px;color:#6b7280;margin-top:6px">اضغط ✕ على أي ترند لإزالته — حتى لو لم يَعُد ظاهراً في الترندات الحالية.</div></div>`:''}
   <div class="card">
     <div class="ct">🏷️ هاشتاقات إضافية (اختياري)</div>
-    <input id="customTags" placeholder="مثال: #عروض #الرياض — اتركه فارغاً للاعتماد على الترندات" value="${S.customTags||''}" style="width:100%" oninput="S.customTags=this.value">
+    <input id="customTags" placeholder="مثال: #فيصل_يختار #التسويق_بالعمولة — اتركه فارغاً للاعتماد على الترندات" value="${S.customTags||''}" style="width:100%" oninput="S.customTags=this.value">
     <div style="font-size:11px;color:#6b7280;margin-top:6px">تُضاف هذه الهاشتاقات لكل تغريدة. اتركها فارغة لتعتمد على الترندات المختارة فقط.</div>
   </div>
   <div style="display:flex;gap:10px;margin-top:8px">
@@ -1198,6 +1198,21 @@ function renderS1(){
   </div>
   ` : ''}
 
+  ${M==='general'?`
+  <div class="card">
+    <div class="ct">🖼️ صور أو فيديو (اختياري)</div>
+    ${S.prodImages.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      ${S.prodImages.map((img,i)=>`<div style="position:relative">
+        ${(img||'').startsWith('data:video') ? `<video src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #1a2540" muted></video>` : `<img src="${img}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #1a2540">`}
+        <button onclick="S.prodImages.splice(${i},1);render()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ff4444;border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
+      </div>`).join('')}
+    </div>` : ''}
+    <label style="font-size:12px;color:#6b7280">${S.prodImages.length === 0 ? 'ارفع حتى 4 صور — أو فيديو واحد — من جهازك' : (S.prodImages.some(x=>(x||'').startsWith('data:video')) ? 'الفيديو يُرفع وحده (لا يُخلط مع صور)' : 'إضافة المزيد (حتى 4 صور)')}</label>
+    <input type="file" id="genMedia" accept="image/*,video/*" multiple ${(S.prodImages.length >= 4 || S.prodImages.some(x=>(x||'').startsWith('data:video'))) ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px;display:block">
+    ${S.prodImages.length ? `<button class="btn btn-g" style="width:auto;padding:7px 14px;font-size:12px;color:#ff6b6b;margin-top:10px" onclick="S.prodImages=[];render()">🗑️ مسح الوسائط</button>` : ''}
+  </div>
+  ` : ''}
+
   ${M==='marketing'?`<div class="card">
     <div class="ct">🛍️ بحث عن منتج</div>
     <div class="tabs">${SRCS.map(s=>`<button class="tab ${S.bsSrc===s.k?'active':''}" onclick="S.bsSrc='${s.k}';S.products=[];render()">${s.l}</button>`).join('')}</div>
@@ -1244,8 +1259,8 @@ function renderS1(){
       </div>
     </div>` : ''}
     <div style="margin-top:10px">
-      <label>${S.prodImages.length === 0 ? 'أو ارفع صوراً من جهازك — يمكنك تحديد عدة صور معاً (حتى 4)' : 'إضافة صور أخرى (تحديد متعدد)'}</label>
-      <input type="file" id="imgUpload" accept="image/*" multiple ${S.prodImages.length >= 4 ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px">
+      <label>${S.prodImages.length === 0 ? 'أو ارفع صوراً (حتى 4) أو فيديو واحد من جهازك' : (S.prodImages.some(x=>(x||'').startsWith('data:video')) ? 'الفيديو يُرفع وحده (لا يُخلط مع صور)' : 'إضافة المزيد (حتى 4 صور)')}</label>
+      <input type="file" id="imgUpload" accept="image/*,video/*" multiple ${(S.prodImages.length >= 4 || S.prodImages.some(x=>(x||'').startsWith('data:video'))) ? 'disabled' : ''} style="margin-top:6px;font-size:12px;padding:6px">
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
       <button class="btn btn-g" style="width:auto;padding:8px 14px;font-size:12px" onclick="S.afUrl='';S.prodDesc='';S.products=[];S.prodSearch='';S.prodImages=[];S.storeImages=[];render()" title="مسح الكل">🗑️ مسح الكل</button>
@@ -1326,28 +1341,11 @@ function bindS1(){
     render();
   });
   // FIX #2: رفع صورة بدون مسح الرابط والوصف
-  document.getElementById('imgUpload')?.addEventListener('change', (e)=>{
-    // احفظ قيم الحقول قبل render
-    S.afUrl = document.getElementById('afUrl')?.value || S.afUrl;
-    S.prodDesc = document.getElementById('prodDesc')?.value || S.prodDesc;
-    const files = Array.from(e.target.files || []);
-    files.forEach(file => {
-      if(S.prodImages.length >= 4) return;
-      const reader = new FileReader();
-      reader.onload = (ev)=>{
-        S.prodImages.push(ev.target.result);
-        render();
-      };
-      reader.readAsDataURL(file);
-    });
-  });
-  document.getElementById('freeMedia')?.addEventListener('change', (e)=>{
-    S.tweet = document.getElementById('freeTweet')?.value || S.tweet; // احفظ النص قبل render
-    const files = Array.from(e.target.files || []);
+  // معالج وسائط موحّد (صور حتى 4 أو فيديو واحد) لكل الأوضاع
+  function processMediaFiles(files){
     for(const file of files){
       const isVideo = (file.type||'').startsWith('video');
       if(isVideo){
-        // إكس يقبل فيديو واحداً فقط ولا يُخلط مع صور
         if(S.prodImages.length){ alert('لا يمكن خلط الفيديو مع الصور. امسح الوسائط أولاً لرفع فيديو.'); break; }
         if(file.size > 200*1024*1024){ alert('حجم الفيديو كبير جداً (الحد ~200 ميجابايت).'); break; }
         const reader = new FileReader();
@@ -1362,7 +1360,24 @@ function bindS1(){
         reader.readAsDataURL(file);
       }
     }
-    e.target.value = ''; // اسمح بإعادة اختيار نفس الملف
+  }
+  // الأفلييت (مع حفظ حقول المنتج قبل render)
+  document.getElementById('imgUpload')?.addEventListener('change', (e)=>{
+    S.afUrl = document.getElementById('afUrl')?.value || S.afUrl;
+    S.prodDesc = document.getElementById('prodDesc')?.value || S.prodDesc;
+    processMediaFiles(Array.from(e.target.files || []));
+    e.target.value = '';
+  });
+  // أكتبها بنفسي (مع حفظ النص قبل render)
+  document.getElementById('freeMedia')?.addEventListener('change', (e)=>{
+    S.tweet = document.getElementById('freeTweet')?.value || S.tweet;
+    processMediaFiles(Array.from(e.target.files || []));
+    e.target.value = '';
+  });
+  // توليد عام
+  document.getElementById('genMedia')?.addEventListener('change', (e)=>{
+    processMediaFiles(Array.from(e.target.files || []));
+    e.target.value = '';
   });
 }
 
@@ -1595,7 +1610,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.3.8'; // يُحدّث تلقائياً من main
+let APP_VER = '2.3.9'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
