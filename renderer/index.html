@@ -1127,14 +1127,14 @@ function renderS0(){
   return `<div class="ptit">الترندات الحالية</div>
   <div class="psub">اختر حتى 3 ترندات لتضمينها في تغريدتك</div>
   <div class="card">
-    ${S.platform!=='google'?`<div class="ct">🌍 المنطقة</div>
-    <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>`:''}
+    <div class="ct">🌍 المنطقة</div>
+    <div class="tabs">${REGIONS.map(r=>`<button class="tab ${S.region===r.k?'active':''}" onclick="S.region='${r.k}';S.trends=[];S.trendsReal=false;S.trendsError='';render()">${r.l}</button>`).join('')}</div>
     <div class="ct" style="margin-bottom:8px">📱 المنصة</div>
     <div class="tabs">
       <button class="tab ${S.platform==='x'?'active':''}" onclick="S.platform='x';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🐦 إكس</button>
       <button class="tab ${S.platform==='google'?'active':''}" onclick="S.platform='google';S.trends=[];S.trendsReal=false;S.trendsError='';render()">🔥 ترند قوقل</button>
     </div>
-    ${S.platform==='google'?`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات قوقل عالمية لحظية (لا تعتمد على المنطقة) — صالحة للنشر على كل المنصات</div>`:''}
+    ${S.platform==='google'?`<div style="font-size:11px;color:#6b7280;margin-bottom:8px;background:#1d9bf011;border:1px solid #1d9bf033;border-radius:8px;padding:8px 11px">💡 ترندات قوقل اللحظية حسب المنطقة المختارة — صالحة للنشر على كل المنصات</div>`:''}
     <button class="btn btn-p" id="btnFetch" style="width:auto;padding:8px 20px;font-size:13px">🔄 جلب الترندات ${S.trendsReal?'<span class="real-badge">● مباشر</span>':''}</button>
   </div>
   ${S.trendsError?`<div class="err-box">⚠️ ${escHtml(S.trendsError)}</div>`:''}
@@ -1610,7 +1610,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.3.9'; // يُحدّث تلقائياً من main
+let APP_VER = '2.4.0'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
