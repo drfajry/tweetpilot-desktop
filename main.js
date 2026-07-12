@@ -21,12 +21,8 @@ const https = require('https');
 const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
-const API_KEY      = '1241epzWTO5a9JCoyGnR3Eb6L'; // ← Consumer Key
-const API_SECRET   = 'XuW2J8ayMyTQyCmCkVJw7r7qMw3xoWEZirrNaqDUqGMoCXeafq'; // ← Consumer Secret
-const ACCESS_TOKEN = '2051302166883606529-6FoWmSdH7pDbmuxLPQQjfEZiCy0CCx'; // ← Access Token
-const ACCESS_SECRET= 'Q5uSfh3SiOPDqzFqIue18lFJnGmU0Zia6UNeCvSmfGsxo'; // ← Access Token Secret
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.4.0';
+const APP_VERSION    = '2.4.3';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -2187,12 +2183,27 @@ const SYNONYMS_N = _normKeys(SYNONYMS);
 const GENERIC_N = new Set([...GENERIC_WORDS].map(w => normText(w)));
 
 // استخراج رقم الموديل (S24, A55, M55, A36, WH-1000XM5, 15 Pro Max) — أعلى أولوية في البحث
+// يحوّل الموديلات المكتوبة بالعربية إلى الإنجليزية: اس25→S25، ايه55→A55، نوت20→Note20، ام55→M55
+function arabicModelFix(s) {
+  let t = ' ' + String(s || '').replace(/[إأآا]/g, 'ا').replace(/ة/g, 'ه') + ' ';
+  // \b لا تعمل مع العربية، فنستخدم lookbehind لمسافة/بداية
+  t = t.replace(/(?<=\s)زد\s?فليب\s?(\d{0,2})/g, 'Z Flip $1');
+  t = t.replace(/(?<=\s)زد\s?فولد\s?(\d{0,2})/g, 'Z Fold $1');
+  t = t.replace(/(?<=\s)نوت\s?(\d{1,3})/g, 'Note $1');   // نوت 20 → Note 20
+  t = t.replace(/(?<=\s)اس\s?(\d{1,3})/g, 'S$1');        // اس 25 → S25 (Galaxy S)
+  t = t.replace(/(?<=\s)ايه\s?(\d{1,3})/g, 'A$1');       // ايه 55 → A55 (Galaxy A)
+  t = t.replace(/(?<=\s)ام\s?(\d{1,3})/g, 'M$1');        // ام 55 → M55 (Galaxy M)
+  t = t.replace(/(?<=\s)اف\s?(\d{1,3})/g, 'F$1');        // اف
+  return t.replace(/\s+/g, ' ').trim();
+}
+
 function extractModel(text) {
-  const t = ' ' + String(text || '') + ' ';
+  const t = ' ' + arabicModelFix(String(text || '')) + ' '; // حوّل الموديلات العربية أولاً
   const models = [];
   const patterns = [
-    /\b([A-Za-z]{1,4}-?\d{2,4}[A-Za-z]{0,3}\d{0,2})\b/g, // WH-1000XM5، A55، S24، M55
+    /\b([A-Za-z]{1,4}-?\d{2,4}[A-Za-z]{0,3}\d{0,2})\b/g, // WH-1000XM5، A55، S24، M55، S25
     /\b(\d{1,2}\s?(?:Pro\s?Max|Pro|Ultra|Plus|Max|Mini|SE|FE)\b)/gi, // 15 Pro Max، S24 Ultra
+    /\b((?:Note|Z\s?Flip|Z\s?Fold)\s?\d{1,3})\b/gi, // Note 20، Z Flip 5
   ];
   for (const re of patterns) { let m; while ((m = re.exec(t))) { const v = m[1].replace(/\s+/g, ' ').trim(); if (v && !/^\d{1,2}$/.test(v)) models.push(v); } }
   return [...new Set(models)];
@@ -2215,7 +2226,7 @@ function queryModels(raw) {
 function improveQuery(raw) {
   const original = String(raw || '').trim();
   if (!original) return original;
-  const words = normText(original).split(' ').filter(Boolean);
+  const words = arabicModelFix(normText(original)).split(' ').filter(Boolean); // حوّل الموديل العربي (اس25→S25)
   const brands = [], kept = [];
   for (const w of words) {
     if (BRAND_MAP_N[w]) { brands.push(BRAND_MAP_N[w][0]); continue; }
@@ -2224,8 +2235,9 @@ function improveQuery(raw) {
     kept.push(w);
   }
   const models = extractModel(original);
-  const modelKeys = models.map(m => m.toLowerCase().replace(/\s+/g, ''));
-  const keptClean = kept.filter(w => !modelKeys.includes(w.toLowerCase().replace(/\s+/g, ''))); // لا تكرّر الموديل
+  const modelWords = new Set();
+  models.forEach(m => m.toLowerCase().split(/\s+/).forEach(w => modelWords.add(w))); // كل كلمات الموديل
+  const keptClean = kept.filter(w => !modelWords.has(w.toLowerCase().replace(/\s+/g, ''))); // لا تكرّر أي جزء من الموديل
   const parts = [...new Set([...brands, ...models, ...keptClean])].filter(Boolean);
   const improved = parts.join(' ').trim();
   return improved.length >= 2 ? improved : original;
@@ -2270,9 +2282,19 @@ function similarity(a, b) {
   return max ? 1 - levenshtein(a, b) / max : 0;
 }
 
-// درجة منتج (0..1): تطابق الموديل (أعلى) + العلامة + احتواء كلمات الاستعلام. مناسب للأسماء الطويلة (نون).
+// يحوّل اسم المنتج لصيغة قابلة للمقارنة: يحوّل الموديل العربي (اس25→s25) وأسماء العلامات العربية للإنجليزية
+function canonName(s) {
+  const t = arabicModelFix(normText(s));
+  return t.split(' ').map(w => {
+    if (BRAND_MAP_N[w]) return BRAND_MAP_N[w][0].toLowerCase();  // سامسونج→samsung، جالكسي→galaxy
+    if (SYNONYMS_N[w]) return SYNONYMS_N[w].toLowerCase();       // برو→pro
+    return w;
+  }).join(' ').toLowerCase();  // توحيد الحالة (S25→s25) ليطابق الموديل
+}
+
+// درجة منتج (0..1): تطابق الموديل (أعلى) + العلامة + احتواء كلمات الاستعلام. مناسب للأسماء الطويلة والعربية.
 function scoreProduct(productName, rawQuery) {
-  const pn = normText(productName);
+  const pn = canonName(productName);   // اسم المنتج بعد توحيده (يطابق الأسماء العربية مع الاستعلام الإنجليزي)
   const pnNoSpace = pn.replace(/\s+/g, '');
   const models = queryModels(rawQuery).map(m => normText(m).replace(/\s+/g, ''));
   const brands = brandsFromQuery(rawQuery).map(b => normText(b));
@@ -2308,18 +2330,18 @@ function rankFilter(products, rawQuery) {
   const thresholds = [0.75, 0.72, 0.70, 0.67, 0.65, 0.60];
   let kept = [];
   for (const th of thresholds) { kept = scored.filter(p => p._score >= th); if (kept.length >= 5) break; }
-  if (!kept.length) return [];          // لا منتج مناسب ≥60% → غير موجود (لا اختيار خاطئ)
-  return kept.slice(0, 5);              // أفضل 5، الأعلى أولاً
+  if (kept.length) return kept.slice(0, 5);   // نتائج مطابقة ≥60٪
+  // لا شيء يبلغ 60٪: أعرض أقرب 3 نتائج (مرتّبة) بدل إخفاء كل شيء — تجربة أفضل من "لا نتائج"
+  return scored.slice(0, 3);
 }
 
 
 // ── بحث المنتجات داخل نافذة المتجر الحقيقية (لا كشط محركات بحث = لا حظر) ──
 // نفتح صفحة بحث المتجر في نافذة خفية، ننتظر تحميل النتائج، ثم نقرأ روابط المنتجات من DOM الفعلي.
 ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
-  const rawQuery = String(query || '').trim();              // الاستعلام كما كتبه المستخدم (للترتيب)
-  const queries = buildQueries(rawQuery);                    // استعلامات مرتّبة بالأولوية
-  query = queries[0] || rawQuery;                            // ابدأ بالاستعلام المحسّن الأفضل
-  console.log('[SEARCH] raw=' + JSON.stringify(rawQuery) + ' improved=' + JSON.stringify(query) + ' queries=' + JSON.stringify(queries));
+  // البحث بالعبارة كما كتبها المستخدم تماماً (لا تحويل ولا تعديل)
+  query = String(query || '').trim();
+  console.log('[SEARCH] query=' + JSON.stringify(query) + ' source=' + source);
   const STORES = {
     amazon: {
       url: q => `https://www.amazon.sa/s?k=${encodeURIComponent(q)}&language=ar`,
@@ -2517,12 +2539,8 @@ ipcMain.handle('fetch-bestsellers', async (_, { source, query }) => {
               isProduct: true,
             }));
 
-          // ترتيب ذكي بالتشابه (موديل ← علامة ← اسم) مع عتبة متدرّجة 75→60٪
-          const ranked = rankFilter(clean, rawQuery);
-          console.log('[SEARCH] results=' + clean.length + ' ranked=' + ranked.length + (ranked.length ? ' topScore=' + (ranked[0]._score || 0).toFixed(2) : ' (none >=60%)'));
-          // عند وجود موديل/علامة ولا نتيجة ≥60٪ → غير موجود (لا نختار منتجاً خاطئاً)
-          const finalProducts = ranked.map(({ _score, ...p }) => p);
-          finish({ success: true, products: finalProducts, engine: 'store', notFound: finalProducts.length === 0 });
+          // إرجاع النتائج كما يرجعها الموقع بالضبط (بلا فلترة/ترتيب يُخفي نتائج صحيحة)
+          finish({ success: true, products: clean.slice(0, 8), engine: 'store' });
           return;
         }
       } catch(e) {}
