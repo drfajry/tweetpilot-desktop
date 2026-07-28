@@ -22,7 +22,7 @@ const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.4.5';
+const APP_VERSION    = '2.4.6';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
