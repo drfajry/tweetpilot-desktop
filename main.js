@@ -22,7 +22,7 @@ const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.4.3';
+const APP_VERSION    = '2.4.4';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -2335,6 +2335,141 @@ function rankFilter(products, rawQuery) {
   return scored.slice(0, 3);
 }
 
+
+// ════════════════ استخراج بيانات يوتيوب (كشط الصفحة العامة) ════════════════
+// يستخرج الرقم القياسي لفيديو يوتيوب من أي صيغة راب_ط
+function parseYoutubeId(input) {
+  const s = String(input || '').trim();
+  // صيغ: youtu.be/ID ، watch?v=ID ، shorts/ID ، embed/ID
+  const m = s.match(/(?:youtu\.be\/|v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/) || s.match(/^([A-Za-z0-9_-]{11})$/);
+  return m ? m[1] : null;
+}
+
+// يفتح صفحة الفيديو في نافذة خفية ويقرأ العنوان/الوصف/الوسوم/المشاهدات من بيانات يوتيوب الداخلية
+ipcMain.handle('youtube-video', async (_, { url }) => {
+  const vid = parseYoutubeId(url);
+  console.log('[YT_VIDEO] input=' + JSON.stringify(url) + ' id=' + vid);
+  if (!vid) return { success: false, error: 'رابط يوتيوب غير صالح' };
+
+  return await new Promise((resolve) => {
+    let win = null, done = false;
+    const finish = (v) => { if (done) return; done = true; try { if (win && !win.isDestroyed()) win.destroy(); } catch(e){} resolve(v); };
+    setTimeout(() => finish({ success: false, error: 'انتهت مهلة الجلب — حاول مجدداً' }), 25000);
+    try {
+      win = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { partition: 'persist:nashir-shop', backgroundThrottling: false } });
+      win.webContents.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      win.loadURL('https://www.youtube.com/watch?v=' + vid + '&hl=ar');
+      win.webContents.on('did-finish-load', async () => {
+        try {
+          await new Promise(r => setTimeout(r, 1500)); // مهلة لتحميل بيانات المشغّل
+          const data = await win.webContents.executeJavaScript(`
+            (() => {
+              try {
+                let pr = window.ytInitialPlayerResponse;
+                if (!pr) {
+                  // ابحث في سكربتات الصفحة إن لم يكن متاحاً مباشرة
+                  for (const s of document.querySelectorAll('script')) {
+                    const t = s.textContent || '';
+                    const i = t.indexOf('ytInitialPlayerResponse');
+                    if (i >= 0) { const j = t.indexOf('{', i); try { pr = JSON.parse(t.slice(j).match(/^{.*?}(?=;|\\s*var|\\s*$)/s)[0]); } catch(e){} if (pr) break; }
+                  }
+                }
+                const vd = (pr && pr.videoDetails) || {};
+                const micro = (pr && pr.microformat && pr.microformat.playerMicroformatRenderer) || {};
+                return {
+                  ok: !!vd.title,
+                  title: vd.title || '',
+                  description: vd.shortDescription || (micro.description && micro.description.simpleText) || '',
+                  keywords: vd.keywords || [],
+                  views: vd.viewCount || '',
+                  author: vd.author || '',
+                  lengthSeconds: vd.lengthSeconds || '',
+                  category: micro.category || '',
+                };
+              } catch(e) { return { ok:false, err:String(e).slice(0,120) }; }
+            })()
+          `);
+          console.log('[YT_VIDEO] extracted', JSON.stringify({ ok: data && data.ok, titleLen: (data&&data.title||'').length, kw: (data&&data.keywords||[]).length, views: data&&data.views, err: data&&data.err }));
+          if (data && data.ok) {
+            finish({ success: true, video: {
+              id: vid,
+              title: data.title,
+              description: data.description,
+              tags: (data.keywords || []).join(', '),
+              tagsArr: data.keywords || [],
+              views: data.views ? Number(data.views).toLocaleString('en-US') : '',
+              author: data.author,
+              category: data.category,
+            }});
+          } else {
+            finish({ success: false, error: 'تعذّر استخراج بيانات الفيديو (قد يكون خاصاً أو محذوفاً)' });
+          }
+        } catch(e) { console.log('[YT_VIDEO] exception', String(e).slice(0,120)); finish({ success: false, error: 'خطأ أثناء الاستخراج' }); }
+      });
+    } catch(e) { finish({ success: false, error: 'تعذّر فتح نافذة الجلب' }); }
+  });
+});
+
+// يبحث في يوتيوب ويعيد أعلى المقاطع مرتّبة حسب المشاهدات
+ipcMain.handle('youtube-search', async (_, { query }) => {
+  const q = String(query || '').trim();
+  console.log('[YT_SEARCH] query=' + JSON.stringify(q));
+  if (!q) return { success: false, error: 'أدخل عنواناً للبحث' };
+
+  return await new Promise((resolve) => {
+    let win = null, done = false;
+    const finish = (v) => { if (done) return; done = true; try { if (win && !win.isDestroyed()) win.destroy(); } catch(e){} resolve(v); };
+    setTimeout(() => finish({ success: false, error: 'انتهت مهلة البحث — حاول مجدداً' }), 25000);
+    try {
+      win = new BrowserWindow({ show: false, width: 1280, height: 1000, webPreferences: { partition: 'persist:nashir-shop', backgroundThrottling: false } });
+      win.webContents.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      win.loadURL('https://www.youtube.com/results?search_query=' + encodeURIComponent(q) + '&hl=ar');
+      win.webContents.on('did-finish-load', async () => {
+        try {
+          await new Promise(r => setTimeout(r, 1800));
+          const list = await win.webContents.executeJavaScript(`
+            (() => {
+              try {
+                let d = window.ytInitialData;
+                if (!d) {
+                  for (const s of document.querySelectorAll('script')) {
+                    const t = s.textContent || '';
+                    const i = t.indexOf('ytInitialData');
+                    if (i >= 0) { const j = t.indexOf('{', i); try { d = JSON.parse(t.slice(j).match(/^{.*?}(?=;|\\s*$)/s)[0]); } catch(e){} if (d) break; }
+                  }
+                }
+                const out = [];
+                const secs = d.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents;
+                for (const sec of secs) {
+                  const items = (sec.itemSectionRenderer && sec.itemSectionRenderer.contents) || [];
+                  for (const it of items) {
+                    const v = it.videoRenderer;
+                    if (!v) continue;
+                    const title = (v.title && v.title.runs && v.title.runs[0] && v.title.runs[0].text) || '';
+                    const vc = (v.viewCountText && (v.viewCountText.simpleText || (v.viewCountText.runs && v.viewCountText.runs.map(r=>r.text).join('')))) || '';
+                    const nviews = parseInt((vc.match(/[\\d,\\.]+/)||['0'])[0].replace(/[,\\.]/g,'')) || 0;
+                    const chan = (v.ownerText && v.ownerText.runs && v.ownerText.runs[0] && v.ownerText.runs[0].text) || '';
+                    if (title) out.push({ id: v.videoId, title, viewsText: vc, nviews, channel: chan });
+                    if (out.length >= 40) break;
+                  }
+                }
+                return out;
+              } catch(e) { return { err: String(e).slice(0,150) }; }
+            })()
+          `);
+          if (Array.isArray(list)) {
+            const sorted = list.sort((a,b) => b.nviews - a.nviews).slice(0, 12);
+            console.log('[YT_SEARCH] found=' + list.length + ' returned=' + sorted.length);
+            finish({ success: true, results: sorted });
+          } else {
+            console.log('[YT_SEARCH] parse error', JSON.stringify(list));
+            finish({ success: false, error: 'تعذّر قراءة نتائج البحث' });
+          }
+        } catch(e) { console.log('[YT_SEARCH] exception', String(e).slice(0,120)); finish({ success: false, error: 'خطأ أثناء البحث' }); }
+      });
+    } catch(e) { finish({ success: false, error: 'تعذّر فتح نافذة البحث' }); }
+  });
+});
 
 // ── بحث المنتجات داخل نافذة المتجر الحقيقية (لا كشط محركات بحث = لا حظر) ──
 // نفتح صفحة بحث المتجر في نافذة خفية، ننتظر تحميل النتائج، ثم نقرأ روابط المنتجات من DOM الفعلي.
