@@ -293,6 +293,8 @@ const SEO_STATE = {
   title:'', afUrl:'', trends:[], selTrend:null,
   vtype:'entertainment',
   result:null, loading:false,
+  ytUrl:'', ytVideo:null, ytLoadingV:false,
+  ytQuery:'', ytResults:null, ytLoadingS:false,
 };
 
 function renderSeoPage(){
@@ -326,6 +328,48 @@ function renderSeoPage(){
     <div class="f">
       <label>رابط المنتج (للمراجعة)</label>
       <input id="seoAfUrl" placeholder="https://amzn.to/..." value="${SEO_STATE.afUrl}">
+    </div>` : ''}
+  </div>
+
+  <div class="card">
+    <div class="ct">🎥 استخراج من فيديو مشابه</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:10px">الصق رابط فيديو يوتيوب لعرض وصفه وكلماته الدلالية ونسخها</div>
+    <div style="display:flex;gap:8px">
+      <input id="ytUrl" placeholder="https://youtube.com/watch?v=..." value="${escHtml(SEO_STATE.ytUrl)}" style="flex:1">
+      <button class="btn btn-pu" id="btnYtVideo" style="width:auto;padding:9px 18px;font-size:13px;white-space:nowrap" ${SEO_STATE.ytLoadingV?'disabled':''}>${SEO_STATE.ytLoadingV?'<span class="spin"></span>':'🔍 استخراج'}</button>
+    </div>
+    ${SEO_STATE.ytVideo ? `
+    <div style="margin-top:14px;border-top:1px solid #1a2540;padding-top:14px">
+      <div style="font-size:13px;color:#00c896;font-weight:700;margin-bottom:10px">✅ ${escHtml(SEO_STATE.ytVideo.title)} ${SEO_STATE.ytVideo.views?`<span style="color:#6b7280;font-weight:400">· 👁️ ${escHtml(SEO_STATE.ytVideo.views)} مشاهدة</span>`:''}</div>
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:#1d9bf0;font-weight:600">📝 الوصف</span><button class="btn btn-g" onclick="copySection('ytvDesc')" style="width:auto;padding:4px 12px;font-size:11px">📋 نسخ</button></div>
+        <div id="ytvDesc" class="seo-res-box" style="white-space:pre-wrap;line-height:1.8;max-height:200px;overflow-y:auto">${escHtml(SEO_STATE.ytVideo.description||'(لا يوجد وصف)')}</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:#1d9bf0;font-weight:600">🔖 الكلمات الدلالية</span><button class="btn btn-g" onclick="copySection('ytvTags')" style="width:auto;padding:4px 12px;font-size:11px">📋 نسخ</button></div>
+        <div id="ytvTags" class="seo-res-box">${escHtml(SEO_STATE.ytVideo.tags||'(لا توجد كلمات دلالية ظاهرة)')}</div>
+      </div>
+    </div>` : ''}
+  </div>
+
+  <div class="card">
+    <div class="ct">🏆 أعلى المقاطع بنفس العنوان</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:10px">ابحث عن عنوان لعرض أعلى الفيديوهات مشاهدةً — للإلهام والمقارنة</div>
+    <div style="display:flex;gap:8px">
+      <input id="ytQuery" placeholder="اكتب عنواناً للبحث..." value="${escHtml(SEO_STATE.ytQuery)}" style="flex:1">
+      <button class="btn btn-pu" id="btnYtSearch" style="width:auto;padding:9px 18px;font-size:13px;white-space:nowrap" ${SEO_STATE.ytLoadingS?'disabled':''}>${SEO_STATE.ytLoadingS?'<span class="spin"></span>':'🔎 بحث'}</button>
+    </div>
+    ${SEO_STATE.ytResults ? `
+    <div style="margin-top:14px;border-top:1px solid #1a2540;padding-top:12px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
+      ${SEO_STATE.ytResults.length ? SEO_STATE.ytResults.map((v,i)=>`
+        <div style="display:flex;gap:10px;align-items:center;background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:10px 12px">
+          <span style="font-weight:800;color:${i<3?'#e0a32e':'#6b7280'};font-size:15px;min-width:22px">${i+1}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;line-height:1.5;color:#e8eaf0">${escHtml(v.title)}</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px">👁️ ${escHtml(v.viewsText||'')} ${v.channel?'· '+escHtml(v.channel):''}</div>
+          </div>
+          <button class="btn btn-g" onclick="useSeoTitle(${i})" style="width:auto;padding:5px 12px;font-size:11px;white-space:nowrap">استخدم</button>
+        </div>`).join('') : '<div style="color:#6b7280;font-size:13px;text-align:center;padding:10px">لا نتائج</div>'}
     </div>` : ''}
   </div>
 
@@ -383,6 +427,28 @@ function renderSeoPage(){
 function bindSeoPage(){
   document.getElementById('seoTitle')?.addEventListener('input', e => SEO_STATE.title = e.target.value);
   document.getElementById('seoAfUrl')?.addEventListener('input', e => SEO_STATE.afUrl = e.target.value);
+  document.getElementById('ytUrl')?.addEventListener('input', e => SEO_STATE.ytUrl = e.target.value);
+  document.getElementById('ytQuery')?.addEventListener('input', e => SEO_STATE.ytQuery = e.target.value);
+  document.getElementById('btnYtVideo')?.addEventListener('click', async () => {
+    const url = document.getElementById('ytUrl')?.value?.trim();
+    if(!url){ alert('الصق رابط فيديو يوتيوب أولاً'); return; }
+    SEO_STATE.ytUrl = url; SEO_STATE.ytLoadingV = true; render();
+    const r = await window.api.youtubeVideo({ url });
+    SEO_STATE.ytLoadingV = false;
+    if(r.success){ SEO_STATE.ytVideo = r.video; }
+    else { SEO_STATE.ytVideo = null; alert(r.error || 'تعذّر الاستخراج'); }
+    render();
+  });
+  document.getElementById('btnYtSearch')?.addEventListener('click', async () => {
+    const q = document.getElementById('ytQuery')?.value?.trim();
+    if(!q){ alert('اكتب عنواناً للبحث أولاً'); return; }
+    SEO_STATE.ytQuery = q; SEO_STATE.ytLoadingS = true; render();
+    const r = await window.api.youtubeSearch({ query: q });
+    SEO_STATE.ytLoadingS = false;
+    SEO_STATE.ytResults = r.success ? r.results : [];
+    if(!r.success) alert(r.error || 'تعذّر البحث');
+    render();
+  });
   document.getElementById('btnSeoTrends')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSeoTrends');
     btn.disabled=true; btn.textContent='⏳...';
@@ -397,6 +463,13 @@ function bindSeoPage(){
 window.selectSeoTrend = (i) => {
   SEO_STATE.selTrend = SEO_STATE.selTrend === i ? null : i;
   render();
+};
+
+window.useSeoTitle = (i) => {
+  const v = SEO_STATE.ytResults && SEO_STATE.ytResults[i];
+  if(v){ SEO_STATE.title = v.title; render();
+    setTimeout(()=>{ const el=document.getElementById('seoTitle'); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); } }, 100);
+  }
 };
 
 async function generateSeo(){
@@ -1610,7 +1683,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.4.3'; // يُحدّث تلقائياً من main
+let APP_VER = '2.4.4'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
