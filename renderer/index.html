@@ -349,6 +349,7 @@ function renderSeoPage(){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:#1d9bf0;font-weight:600">🔖 الكلمات الدلالية</span><button class="btn btn-g" onclick="copySection('ytvTags')" style="width:auto;padding:4px 12px;font-size:11px">📋 نسخ</button></div>
         <div id="ytvTags" class="seo-res-box">${escHtml(SEO_STATE.ytVideo.tags||'(لا توجد كلمات دلالية ظاهرة)')}</div>
       </div>
+      <button class="btn btn-p" onclick="useYtVideoAsResult()" style="margin-top:14px;font-size:13px;padding:11px">📥 استخدم وصف وكلمات هذا الفيديو كأساس</button>
     </div>` : ''}
   </div>
 
@@ -435,7 +436,7 @@ function bindSeoPage(){
     SEO_STATE.ytUrl = url; SEO_STATE.ytLoadingV = true; render();
     const r = await window.api.youtubeVideo({ url });
     SEO_STATE.ytLoadingV = false;
-    if(r.success){ SEO_STATE.ytVideo = r.video; }
+    if(r.success){ SEO_STATE.ytVideo = r.video; if(r.video.title){ SEO_STATE.title = r.video.title; } }
     else { SEO_STATE.ytVideo = null; alert(r.error || 'تعذّر الاستخراج'); }
     render();
   });
@@ -463,6 +464,15 @@ function bindSeoPage(){
 window.selectSeoTrend = (i) => {
   SEO_STATE.selTrend = SEO_STATE.selTrend === i ? null : i;
   render();
+};
+
+window.useYtVideoAsResult = () => {
+  const v = SEO_STATE.ytVideo;
+  if(!v) return;
+  SEO_STATE.title = v.title;
+  SEO_STATE.result = { title: v.title, description: v.description || '', tags: v.tags || '' };
+  render();
+  setTimeout(()=>{ document.getElementById('seoResTitle')?.scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
 };
 
 window.useSeoTitle = (i) => {
@@ -1683,7 +1693,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.4.4'; // يُحدّث تلقائياً من main
+let APP_VER = '2.4.6'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
@@ -1712,7 +1722,7 @@ function renderSponsorBar(){
     <span style="color:#f59e0b;font-size:14px;flex-shrink:0">↗</span>
   </div>`;
 }
-window.api.getVersion().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{});
+try { window.api?.getVersion?.().then(v => { if(v?.version) APP_VER = v.version; }).catch(()=>{}); } catch(e) { console.warn('preload/api غير متاح:', e); }
 setTimeout(refreshDueCount, 1500); // شارة منشورات اليوم عند الفتح
 
 function renderAboutPage(){
