@@ -22,7 +22,7 @@ const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.4.4';
+const APP_VERSION    = '2.4.5';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -2376,11 +2376,18 @@ ipcMain.handle('youtube-video', async (_, { url }) => {
                 }
                 const vd = (pr && pr.videoDetails) || {};
                 const micro = (pr && pr.microformat && pr.microformat.playerMicroformatRenderer) || {};
+                // احتياط للكلمات الدلالية: meta[name=keywords] إن لم تكن في بيانات المشغّل
+                let kw = vd.keywords || [];
+                if (!kw.length) {
+                  const mk = document.querySelector('meta[name="keywords"]');
+                  if (mk && mk.content) kw = mk.content.split(',').map(s => s.trim()).filter(Boolean);
+                }
                 return {
                   ok: !!vd.title,
                   title: vd.title || '',
                   description: vd.shortDescription || (micro.description && micro.description.simpleText) || '',
-                  keywords: vd.keywords || [],
+                  keywords: kw,
+                  kwSource: (vd.keywords && vd.keywords.length) ? 'player' : (kw.length ? 'meta' : 'none'),
                   views: vd.viewCount || '',
                   author: vd.author || '',
                   lengthSeconds: vd.lengthSeconds || '',
@@ -2389,7 +2396,7 @@ ipcMain.handle('youtube-video', async (_, { url }) => {
               } catch(e) { return { ok:false, err:String(e).slice(0,120) }; }
             })()
           `);
-          console.log('[YT_VIDEO] extracted', JSON.stringify({ ok: data && data.ok, titleLen: (data&&data.title||'').length, kw: (data&&data.keywords||[]).length, views: data&&data.views, err: data&&data.err }));
+          console.log('[YT_VIDEO] extracted', JSON.stringify({ ok: data && data.ok, titleLen: (data&&data.title||'').length, kw: (data&&data.keywords||[]).length, kwSource: data&&data.kwSource, views: data&&data.views, err: data&&data.err }));
           if (data && data.ok) {
             finish({ success: true, video: {
               id: vid,
