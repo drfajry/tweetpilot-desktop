@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld('api', {
   postScheduled:    (data)   => ipcRenderer.invoke('post-scheduled', data),
   getHistory:       ()       => ipcRenderer.invoke('get-history'),
   fetchBestsellers: (data)   => ipcRenderer.invoke('fetch-bestsellers', data),
+  youtubeVideo:     (data)   => ipcRenderer.invoke('youtube-video', data),
+  youtubeSearch:    (data)   => ipcRenderer.invoke('youtube-search', data),
   fetchProductImage:(url)    => ipcRenderer.invoke('fetch-product-image', url),
   fetchTrends:      (data)   => ipcRenderer.invoke('fetch-trends', data),
   onScheduledPosted:(cb)     => ipcRenderer.on('scheduled-posted', (_, data) => cb(data)),
