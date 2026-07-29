@@ -126,6 +126,12 @@ input:focus,textarea:focus{border-color:#1d9bf0}
 <div class="main" id="app"></div>
 
 <script>
+// حارس: إن لم يُحمّل preload.js (window.api مفقود) نمنع انهيار الواجهة بالكامل ونطبع تحذيراً واضحاً
+if (typeof window.api === 'undefined' || !window.api) {
+  console.error('⚠️ preload.js لم يُحمّل — window.api مفقود. تأكد من وجود preload.js في جذر المشروع (بجانب main.js) وأن مساره صحيح في webPreferences.preload. الوظائف معطّلة حتى يُصلح ذلك.');
+  window.__apiMissing = true;
+  window.api = new Proxy({}, { get: () => (() => Promise.resolve({ success: false, error: 'preload غير محمّل' })) });
+}
 const S={
   user:null, step:0, page:'home',
   region:'sa', platform:'x', trends:[], selTrends:[], trendsReal:false, trendsError:'',
@@ -294,7 +300,6 @@ const SEO_STATE = {
   vtype:'entertainment',
   result:null, loading:false,
   ytUrl:'', ytVideo:null, ytLoadingV:false,
-  ytQuery:'', ytResults:null, ytLoadingS:false,
 };
 
 function renderSeoPage(){
@@ -354,27 +359,6 @@ function renderSeoPage(){
   </div>
 
   <div class="card">
-    <div class="ct">🏆 أعلى المقاطع بنفس العنوان</div>
-    <div style="font-size:12px;color:#6b7280;margin-bottom:10px">ابحث عن عنوان لعرض أعلى الفيديوهات مشاهدةً — للإلهام والمقارنة</div>
-    <div style="display:flex;gap:8px">
-      <input id="ytQuery" placeholder="اكتب عنواناً للبحث..." value="${escHtml(SEO_STATE.ytQuery)}" style="flex:1">
-      <button class="btn btn-pu" id="btnYtSearch" style="width:auto;padding:9px 18px;font-size:13px;white-space:nowrap" ${SEO_STATE.ytLoadingS?'disabled':''}>${SEO_STATE.ytLoadingS?'<span class="spin"></span>':'🔎 بحث'}</button>
-    </div>
-    ${SEO_STATE.ytResults ? `
-    <div style="margin-top:14px;border-top:1px solid #1a2540;padding-top:12px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
-      ${SEO_STATE.ytResults.length ? SEO_STATE.ytResults.map((v,i)=>`
-        <div style="display:flex;gap:10px;align-items:center;background:#0a0f1a;border:1px solid #1a2540;border-radius:9px;padding:10px 12px">
-          <span style="font-weight:800;color:${i<3?'#e0a32e':'#6b7280'};font-size:15px;min-width:22px">${i+1}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;line-height:1.5;color:#e8eaf0">${escHtml(v.title)}</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px">👁️ ${escHtml(v.viewsText||'')} ${v.channel?'· '+escHtml(v.channel):''}</div>
-          </div>
-          <button class="btn btn-g" onclick="useSeoTitle(${i})" style="width:auto;padding:5px 12px;font-size:11px;white-space:nowrap">استخدم</button>
-        </div>`).join('') : '<div style="color:#6b7280;font-size:13px;text-align:center;padding:10px">لا نتائج</div>'}
-    </div>` : ''}
-  </div>
-
-  <div class="card">
     <div class="ct">▶️ ترندات يوتيوب (اختياري)</div>
     <button class="btn btn-g" id="btnSeoTrends" style="width:auto;padding:8px 18px;font-size:13px">🔄 جلب الترندات</button>
     ${SEO_STATE.trends.length ? `
@@ -429,7 +413,6 @@ function bindSeoPage(){
   document.getElementById('seoTitle')?.addEventListener('input', e => SEO_STATE.title = e.target.value);
   document.getElementById('seoAfUrl')?.addEventListener('input', e => SEO_STATE.afUrl = e.target.value);
   document.getElementById('ytUrl')?.addEventListener('input', e => SEO_STATE.ytUrl = e.target.value);
-  document.getElementById('ytQuery')?.addEventListener('input', e => SEO_STATE.ytQuery = e.target.value);
   document.getElementById('btnYtVideo')?.addEventListener('click', async () => {
     const url = document.getElementById('ytUrl')?.value?.trim();
     if(!url){ alert('الصق رابط فيديو يوتيوب أولاً'); return; }
@@ -438,16 +421,6 @@ function bindSeoPage(){
     SEO_STATE.ytLoadingV = false;
     if(r.success){ SEO_STATE.ytVideo = r.video; if(r.video.title){ SEO_STATE.title = r.video.title; } }
     else { SEO_STATE.ytVideo = null; alert(r.error || 'تعذّر الاستخراج'); }
-    render();
-  });
-  document.getElementById('btnYtSearch')?.addEventListener('click', async () => {
-    const q = document.getElementById('ytQuery')?.value?.trim();
-    if(!q){ alert('اكتب عنواناً للبحث أولاً'); return; }
-    SEO_STATE.ytQuery = q; SEO_STATE.ytLoadingS = true; render();
-    const r = await window.api.youtubeSearch({ query: q });
-    SEO_STATE.ytLoadingS = false;
-    SEO_STATE.ytResults = r.success ? r.results : [];
-    if(!r.success) alert(r.error || 'تعذّر البحث');
     render();
   });
   document.getElementById('btnSeoTrends')?.addEventListener('click', async () => {
@@ -473,13 +446,6 @@ window.useYtVideoAsResult = () => {
   SEO_STATE.result = { title: v.title, description: v.description || '', tags: v.tags || '' };
   render();
   setTimeout(()=>{ document.getElementById('seoResTitle')?.scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
-};
-
-window.useSeoTitle = (i) => {
-  const v = SEO_STATE.ytResults && SEO_STATE.ytResults[i];
-  if(v){ SEO_STATE.title = v.title; render();
-    setTimeout(()=>{ const el=document.getElementById('seoTitle'); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); } }, 100);
-  }
 };
 
 async function generateSeo(){
@@ -1693,7 +1659,7 @@ function saveS1Inputs(){
 window.setCategory = (k) => { saveS1Inputs(); S.category = k; render(); };
 window.setTone = (id) => { saveS1Inputs(); S.tone = id; render(); };
 
-let APP_VER = '2.4.6'; // يُحدّث تلقائياً من main
+let APP_VER = '2.4.7'; // يُحدّث تلقائياً من main
 
 // ── إعدادات الراعي ────────────────────────────────
 // لتفعيل الراعي: غيّر enabled إلى true واملأ البيانات (logo اختياري — رابط صورة أو اتركه فارغاً)
