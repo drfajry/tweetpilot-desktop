@@ -22,7 +22,7 @@ const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.4.8';
+const APP_VERSION    = '2.4.9';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -1454,6 +1454,23 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
       `🔥 صباح الإنجاز! اليوم نبدأ بقوة 💪\n{trends}`,
       `✨ أجمل ما في يومك أنك تقرر كيف يكون 🌟\n{trends}`,
       `⚡ الفرص ما تنتظر أحد — خذ خطوتك اليوم\n{trends}`,
+      // — أسلوب الشهادة الشخصية —
+      `👌 جربت {topic} بنفسي وصراحة ما ندمت\n{trends}`,
+      `🙌 انا من جرّب {topic}.. وأنصحكم فيه عن تجربة\n{trends}`,
+      `🔥 من بعد ما دخلت عالم {topic}، تغيّرت أشياء كثيرة عندي\n{trends}`,
+      `🤍 صدقوني {topic} يستاهل التجربة — وأنا شاهد\n{trends}`,
+      `😍 من أفضل ما مرّ عليّ هالفترة: {topic}\n{trends}`,
+      // — أسلوب الصدمة والفضول —
+      `😮 تتوقع {topic} يغيّر روتينك كامل؟!\n{trends}`,
+      `🤔 وش لو قلت لك إن {topic} أسهل مما تتخيل؟\n{trends}`,
+      `😲 اللي ما يعرف {topic} فاته كثير.. تخيّل!!\n{trends}`,
+      `👀 الكل يتكلم عن {topic}.. وأنا فهمت السبب\n{trends}`,
+      `🤯 {topic}؟! أعرف وش بتقول.. بس اسمعني للآخر\n{trends}`,
+      // — أسلوب المشكلة ثم الحل —
+      `✅ تعبت من نفس المشكلة كل مرة؟ {topic} كان الحل عندي\n{trends}`,
+      `🙏 كنت دايم أواجه صعوبة، لين اكتشفت {topic}\n{trends}`,
+      `💡 المشكلة معروفة للكل.. بس الحل الحقيقي بـ {topic}\n{trends}`,
+      `🦸 هذا اللي أسميه المنقذ: {topic} اختصر عليّ كثير\n{trends}`,
     ],
     informative: [
       `📌 معلومة عن {topic} قد تفيدك اليوم 👇\n{trends}`,
@@ -1462,6 +1479,13 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
       `💡 هل تعلم؟ أغلب النجاحات تبدأ بخطوة صغيرة ثابتة\n{trends}`,
       `📊 نصيحة اليوم: ركّز على شيء واحد وأتقنه\n{trends}`,
       `🧭 القاعدة الذهبية: ما يُقاس يتحسّن\n{trends}`,
+      // — أسلوب النصيحة والتوجيه —
+      `👌 تبي نصيحة؟ ابدأ بـ {topic} ولا تطوّل التفكير\n{trends}`,
+      `💪 مالك إلا {topic} إذا تبي فرق حقيقي\n{trends}`,
+      `🚀 إذا ناوي تطوّر شي، خلّي {topic} أول خطوة\n{trends}`,
+      `📝 اكتبها عندك: {topic} من الأشياء اللي تستاهل وقتك\n{trends}`,
+      `🔑 السر بسيط: اهتم بـ {topic} من اليوم\n{trends}`,
+      `🧠 نصيحة مجرّب: لا تعقّد {topic} أكثر من اللازم\n{trends}`,
     ],
     funny: [
       `😂 أنا و{topic}: قصة حب من طرف واحد\n{trends}`,
@@ -1470,6 +1494,11 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
       `🤭 القهوة: الموظف الوحيد اللي ما يخذلني صباحاً ☕\n{trends}`,
       `😆 النوم مبكراً خطة عظيمة.. أنفذها كل ليلة الساعة 2 🌙\n{trends}`,
       `😂 مزاجي اليوم: طموح براتب آخر الشهر\n{trends}`,
+      // — أسلوب طريف من النماذج —
+      `😂 دخلت أتفرّج على {topic} بس.. طلعت متورّط للركب\n{trends}`,
+      `🤭 بيني وبينكم: {topic} أحسن قرار اتخذته هالشهر\n{trends}`,
+      `😅 قاعد أشتغل وفجأة تذكرت {topic}.. الإنتاجية راحت\n{trends}`,
+      `🫠 {topic} ضعف.. وأنا أصلاً ما عندي مقاومة\n{trends}`,
     ],
     urgency: [
       `⏰ تذكير: {topic} ما راح ينجز نفسه — ابدأ الحين\n{trends}`,
@@ -1477,6 +1506,22 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
       `⚡ باقي ساعات على نهاية الأسبوع.. لحق على هدف واحد\n{trends}`,
       `⏳ الوقت يمشي سواء بدأت أو لا — الفرق أنت من يصنعه\n{trends}`,
       `🔔 لا تأجل لبكرة قراراً تقدر تأخذه اليوم\n{trends}`,
+      // — أسلوب الإلحاح من النماذج —
+      `⚡ لا يفوتك {topic} — الفرص تطير بسرعة\n{trends}`,
+      `🏃 الحق {topic} قبل ما يصير ترند والكل يتكلم عنه\n{trends}`,
+      `⏳ فرصة {topic} ما تتكرر كثير.. انتبه لها\n{trends}`,
+      `⚠️ بدأ ينتشر {topic}.. لا تكون آخر من يعرف\n{trends}`,
+    ],
+    // — زاوية التفاعل والدعوة (بلا موضوع محدد أحياناً) —
+    engage: [
+      `🤍 جرّبوا {topic} وبتدعون لي\n{trends}`,
+      `💬 قولوا لي تجاربكم مع {topic} 👇 نستفيد من بعض\n{trends}`,
+      `🌟 يا جماعة الخير، {topic} موضوع يستاهل وقفة\n{trends}`,
+      `🔖 احفظ التغريدة.. {topic} بتحتاجه أكيد\n{trends}`,
+      `🔁 شاركها مع اللي يهتم بـ {topic}\n{trends}`,
+      `👇 وش رأيكم في {topic}؟ ناقشوني بالتعليقات\n{trends}`,
+      `❤️ إذا عجبك {topic}، سوّ ريتويت ينفع غيرك\n{trends}`,
+      `🙌 تابعوني عشان ما يفوتكم كل جديد عن {topic}\n{trends}`,
     ],
   };
 
@@ -1529,6 +1574,8 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
     }
   } else {
     pool = [...(TEMPLATES_FREE[tone] || TEMPLATES_FREE.hype)];
+    // زاوية التفاعل تناسب كل النغمات — نضمّها دائماً لتنويع أوسع
+    if (TEMPLATES_FREE.engage) pool = [...pool, ...TEMPLATES_FREE.engage];
     // بدون موضوع؟ استبعد قوالب {topic}
     if (!productDesc) pool = pool.filter(t => !t.includes('{topic}'));
   }
