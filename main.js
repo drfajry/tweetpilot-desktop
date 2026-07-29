@@ -22,7 +22,7 @@ const Database = require('./db');
 
 // ── إعدادات التطبيق ──────────────────────────────
 const LICENSE_SERVER = 'https://nashir-license.onrender.com'; // ← رابط سيرفر Render
-const APP_VERSION    = '2.4.7';
+const APP_VERSION    = '2.4.8';
 
 // ── النوافذ ───────────────────────────────────────
 let mainWindow;
@@ -1480,14 +1480,44 @@ ipcMain.handle('generate-tweet', (_, { trends, affiliateUrl, productDesc, tone, 
     ],
   };
 
-  const product   = productDesc || 'هذا المنتج';
+  // ── استخراج اسم منتج نظيف قصير من الوصف الطويل (بدل حشر الوصف الخام في القالب) ──
+  const cleanProductName = (desc) => {
+    if (!desc || !desc.trim()) return 'هذا المنتج';
+    let s = String(desc).trim();
+    // الاسم قبل أول فاصلة، أو شرطة محاطة بمسافات (لا نقطع الموديلات مثل WH-1000XM5)
+    s = s.split(/[،,|]|\s[-–—]\s/)[0].trim();
+    // اقطع عند أول كلمة مواصفات
+    s = s.split(/\s(?:بتقنية|بذاكرة|ذاكرة|بكاميرا|كاميرا|بشاشة|شاشة|ببطارية|بطارية|بمعالج|معالج|بلون|لون|بسعة|سعة)(?=\s|$)/)[0].trim();
+    // أزل أرقام المواصفات المتبقية (256GB، 50MP، 256 جيجا...)
+    s = s.replace(/\b\d+(\.\d+)?\s?(GB|TB|MP|RAM|ROM|mAh|جيجا|ميجا|تيرا|بكسل|انش|إنش|بوصة)\b/gi, '')
+         .replace(/\s+/g, ' ').trim();
+    const words = s.split(/\s+/).filter(Boolean);
+    if (words.length > 8) s = words.slice(0, 8).join(' ');
+    return s || (desc.split(/\s+/).slice(0, 6).join(' ')) || 'هذا المنتج';
+  };
+  const product   = cleanProductName(productDesc);
+
+  // هاشتاقات متخصصة حسب الفئة (تُضاف عند قلّة الترندات المختارة)
+  const CATEGORY_HASHTAGS = {
+    tech:    ['#تقنية', '#عروض_التقنية'],
+    fashion: ['#أزياء', '#موضة'],
+    food:    ['#مطاعم', '#توصيل'],
+    beauty:  ['#العناية', '#جمال'],
+    home:    ['#المنزل', '#ديكور'],
+  };
   // فقط الترندات التي هي هاشتاقات حقيقية تُضاف كهاشتاقات؛ الكلمات العادية (مثل البرازيل) لا تُختلق كهاشتاق
   const trendTags = (trends || [])
     .filter(t => t.isHashtag !== false && (t.name || '').startsWith('#'))
     .map(t => t.name)
     .join(' ');
   const fixed     = (customTags || '').trim();
-  const allTags   = [trendTags, fixed].filter(Boolean).join(' ');
+  // أضِف هاشتاق الفئة إن كانت الهاشتاقات الحالية قليلة (تحسين الوصول دون إغراق)
+  let catTags = '';
+  const existingCount = (trendTags + ' ' + fixed).split('#').length - 1;
+  if (category && CATEGORY_HASHTAGS[category] && existingCount < 2) {
+    catTags = CATEGORY_HASHTAGS[category].slice(0, 2 - existingCount).join(' ');
+  }
+  const allTags   = [trendTags, fixed, catTags].filter(Boolean).join(' ');
 
   const isMarketing = !!cleanUrl; // وجود رابط = وضع التسويق، غيابه = تغريد عام
   let pool;
